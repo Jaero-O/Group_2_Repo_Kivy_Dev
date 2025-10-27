@@ -1,0 +1,15 @@
+<ScanningScreen>:
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            source: "assets/bg_blur.png"
+            pos: self.pos
+            size: self.size
+
+    Label:
+        text: "Scanning..."
+        font_size: 36
+        bold: True
+        color: 0, 0, 0, 1
+        pos_hint: {"center_x": 0.5, "center_y": 0.5}
