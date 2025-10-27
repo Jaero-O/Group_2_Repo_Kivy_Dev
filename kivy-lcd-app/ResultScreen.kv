@@ -1,0 +1,79 @@
+<ResultScreen>:
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # --- RESULT HEADER SECTION ---
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        height: 50
+        width: self.parent.width
+        pos_hint: {"x": 0.06, "y": 0.88}
+        spacing: 5
+        valign: "left"
+
+        Image:
+            source: "assets/result.png"
+            size_hint: None, None
+            size: 35, 35
+            allow_stretch: True
+            keep_ratio: True
+            color: (6/255, 87/255, 6/255, 1)
+
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        height: 50
+        width: self.parent.width
+        pos_hint: {"x": 0.19, "y": 0.865}
+        spacing: 5
+        valign: "left"
+
+        Label:
+            text: "Result"
+            color: (5/255, 71/255, 5/255, 1)
+            font_size: 28
+            bold: True
+            valign: "middle"
+            halign: "left"
+            text_size: self.size
+
+    # --- BACK BUTTON (flat, no shape) ---
+    RoundedButton:
+        id: back_button
+        size_hint: None, None
+        size: 100, 36
+        pos_hint: {"x": 0.75, "y": 0.875}
+        on_release: app.root.current = 'capture_result'
+
+        BoxLayout:
+            orientation: "horizontal"
+            size: self.size
+            spacing: 6
+            padding: [0, 0, 0, 0]
+            pos_hint: {"center_y": 0.5}
+            size: back_button.size
+            pos: back_button.pos
+
+            Image:
+                source: "assets/back.png"
+                allow_stretch: True
+                keep_ratio: True
+                size_hint: None, None
+                size: 16, 16
+                pos_hint: {"center_y": 0.5}
+
+            Label:
+                text: "Back"
+                color: (0/255, 121/255, 0/255, 1)
+                font_size: 16
+                bold: True
+                size_hint_x: None
+                width: self.texture_size[0]
+                halign: "left"
+                valign: "middle"
+                pos_hint: {"center_y": 0.5}

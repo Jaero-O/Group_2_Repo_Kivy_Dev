@@ -1,0 +1,20 @@
+<WelcomeScreen>:
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 0.90  # Background color (white with 90% opacity)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    Label:
+        id: tap_label
+        text: "Tap to start scanning"
+        color: 140/255, 187/255, 140/255, 1  # Green text color
+        font_size: 27.53
+        bold: True
+        halign: 'center'
+        valign: 'middle'
+        opacity: 1  # Start fully visible
+        size_hint: None, None
+        size: self.texture_size
+        pos_hint: {"center_x": 0.5, "center_y": 0.5}
