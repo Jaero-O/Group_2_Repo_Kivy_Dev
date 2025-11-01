@@ -1,6 +1,6 @@
 <GuideScreen>:
     canvas.before:
-        # --- Background Layers ---
+        # === Background Layers ===
         Color:
             rgba: 1, 1, 1, 1
         Rectangle:
@@ -12,85 +12,82 @@
             pos: self.pos
             size: self.size
 
-        # --- Rounded Inner Panel ---
+        # === Rounded Inner Panel ===
         Color:
             rgba: 1, 1, 1, 1
         RoundedRectangle:
             id: inner_panel
-            pos: self.x + 20, self.center_y - (self.height * 0.7 / 2)
-            size: self.width - 40, self.height * 0.7
-            radius: [35, 35, 35, 35]
+            pos: self.x + 24, self.center_y - (self.height * 0.68 / 2)
+            size: self.width - 48, self.height * 0.68
+            radius: [40, 40, 40, 40]
 
-        # --- Border for Inner Panel ---
+        # === Border for Inner Panel ===
         Color:
             rgba: 0, 0, 0, 0.05
         Line:
-            rounded_rectangle: (self.x + 20, self.center_y - (self.height * 0.7 / 2), self.width - 40, self.height * 0.7, 35)
-            width: 1.2
+            rounded_rectangle: (self.x + 24, self.center_y - (self.height * 0.68 / 2), self.width - 48, self.height * 0.68, 40)
+            width: 1.3
 
-    # --- GUIDE HEADER SECTION ---
+    # === Header Section ===
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
-        height: 50
-        width: self.parent.width
-        pos_hint: {"x": 0.20, "top": 0.80}
-        spacing: 5
-        valign: "center"
+        size: 480, 60
+        pos_hint: {"x": 0.18, "top": 0.80}
+        spacing: 6
 
         Image:
             source: "assets/guide.png"
             size_hint: None, None
-            size: 40, 40
+            size: 48, 48
             allow_stretch: True
             keep_ratio: True
             color: (6/255, 87/255, 6/255, 1)
-    
+
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
-        height: 50
-        width: self.parent.width
-        pos_hint: {"x": 0.34, "top": 0.795}
+        size: 480, 60
+        pos_hint: {"x": 0.30, "top": 0.795}
         spacing: 5
-        valign: "center"
 
         Label:
             text: "Guide"
             color: (6/255, 87/255, 6/255, 1)
-            font_size: 30
+            font_size: 34
             bold: True
             valign: "middle"
             halign: "left"
             text_size: self.size
 
-    # --- Divider Line ---
+    # === Divider Line ===
     FloatLayout:
         size_hint: 1, 1
         canvas:
             Color:
                 rgba: 0, 0, 0, 0.15
             Rectangle:
-                size: self.width * 0.7, 1.2
-                pos: self.width * 0.15, self.height * 0.70
+                size: self.width * 0.7, 1.5
+                pos: self.width * 0.15, self.height * 0.68
+
+    # === Instruction Text ===
     Label:
         text: 
             "Before scanning, make sure the entire mango leaf is fully visible within the camera or scanner frame. Ensure no part of the leaf is cut off or out of view for accurate scanning results."
         color: 0, 0, 0, 1  
-        font_size: 22
+        font_size:29
         halign: 'left'
         valign: 'top'
-        pos_hint: {'center_x': 0.5, 'top': 0.65}
-        text_size: self.width - 60, None
-        size_hint: 0.8, None
+        pos_hint: {'center_x': 0.5, 'top': 0.64}
+        text_size: self.width - 70, None
+        size_hint: 0.85, None
         height: self.texture_size[1]
 
-
-    # === BACK BUTTON ===
+    # === Back Button ===
     RoundedButton:
         id: back_button
         size_hint: None, None
-        size: 80, 36
+        size: 96, 42
         pos_hint: {"center_x": 0.25, "y": 0.05}
         on_release: app.root.current = 'scan'
 
@@ -101,29 +98,28 @@
             RoundedRectangle:
                 pos: self.x + 1, self.y - 2
                 size: self.size
-                radius: [13, 13, 13, 13]
-            # Blur base layer
+                radius: [14, 14, 14, 14]
+            # Blur Base
             Color:
                 rgba: 0.9, 0.9, 0.9, 0.4
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [13, 13, 13, 13]
-            # Button background
+                radius: [14, 14, 14, 14]
+            # Button Surface
             Color:
                 rgba: 1, 1, 1, 0.7
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
-                radius: [13, 13, 13, 13]
+                radius: [14, 14, 14, 14]
 
         BoxLayout:
             orientation: "horizontal"
             size: back_button.size
             pos: back_button.pos
             spacing: 4
-            padding: [0, 0, 0, 0]
-            
+
             Widget:
                 size_hint_x: 1
 
@@ -132,13 +128,13 @@
                 allow_stretch: True
                 keep_ratio: True
                 size_hint: None, None
-                size: 15, 15
+                size: 17, 17
                 pos_hint: {"center_y": 0.5}
                 
             Label:
                 text: "Back"
                 color: 0/255., 56/255., 0/255., 1
-                font_size: 13
+                font_size: 15
                 bold: True
                 size_hint_x: None
                 width: self.texture_size[0]
