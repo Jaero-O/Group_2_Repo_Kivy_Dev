@@ -1,3 +1,5 @@
+#:kivy 2.0.0
+
 <HomeScreen>:
     canvas.before:
         # 1. --- Main Background ---
@@ -25,7 +27,7 @@
 
     # --- Logo inside the inner panel ---
     Image:
-        source: "assets/logo.png"
+        source: "app/assets/logo.png"
         allow_stretch: True
         keep_ratio: True
         size_hint: None, None
@@ -66,7 +68,7 @@
                 padding: [0, 15, 0, 10]
 
                 Image:
-                    source: "assets/scan.png"
+                    source: "app/assets/scan.png"
                     allow_stretch: True
                     keep_ratio: True
                     size_hint_y: 0.65
@@ -99,7 +101,7 @@
             on_touch_down:
                 if self.collide_point(*args[1].pos): app.root.current = 'records'
             Image:
-                source: "assets/records.png"
+                source: "app/assets/records.png"
                 size_hint_y: 0.45
                 allow_stretch: True
                 keep_ratio: True
@@ -121,7 +123,7 @@
             on_touch_down:
                 if self.collide_point(*args[1].pos): app.root.current = 'share'
             Image:
-                source: "assets/share.png"
+                source: "app/assets/share.png"
                 size_hint_y: 0.45
                 allow_stretch: True
                 keep_ratio: True
@@ -143,7 +145,7 @@
             on_touch_down:
                 if self.collide_point(*args[1].pos): app.root.current = 'help'
             Image:
-                source: "assets/help.png"
+                source: "app/assets/help.png"
                 size_hint_y: 0.45
                 allow_stretch: True
                 keep_ratio: True

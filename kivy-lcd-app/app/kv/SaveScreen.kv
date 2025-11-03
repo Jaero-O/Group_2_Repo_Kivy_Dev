@@ -1,0 +1,279 @@
+#:kivy 2.0.0
+
+<SaveScreen>
+    canvas.before:
+        # === Background Layers ===
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            source: "app/assets/placeholder_bg1.png"
+            pos: self.pos
+            size: self.size
+        Rectangle:
+            source: "app/assets/bg_blur.png"
+            pos: self.pos
+            size: self.size
+
+        # === Rounded Inner Panel ===
+        Color:
+            rgba: 1, 1, 1, 1
+        RoundedRectangle:
+            id: inner_panel
+            pos: self.x + 24, self.center_y - (self.height * 0.68 / 2)
+            size: self.width - 48, self.height * 0.68
+            radius: [40, 40, 40, 40]
+
+        # === Border for Inner Panel ===
+        Color:
+            rgba: 0, 0, 0, 0.05
+        Line:
+            rounded_rectangle: (self.x + 24, self.center_y - (self.height * 0.68 / 2), self.width - 48, self.height * 0.68, 40)
+            width: 1.3
+
+    # === Header Section ===
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        size: 480, 60
+        pos_hint: {"x": 0.18, "top": 0.80}
+        spacing: 6
+
+        Image:
+            source: "app/assets/save.png"
+            size_hint: None, None
+            size: 48, 48
+            allow_stretch: True
+            keep_ratio: True
+            color: (6/255, 87/255, 6/255, 1)
+
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        size: 480, 60
+        pos_hint: {"x": 0.30, "top": 0.795}
+        spacing: 5
+
+        Label:
+            text: "Save"
+            color: (6/255, 87/255, 6/255, 1)
+            font_size: 34
+            bold: True
+            valign: "middle"
+            halign: "left"
+            text_size: self.size
+
+    # === Divider Line ===
+    FloatLayout:
+        size_hint: 1, 1
+        canvas:
+            Color:
+                rgba: 0, 0, 0, 0.15
+            Rectangle:
+                size: self.width * 0.7, 1.5
+                pos: self.width * 0.15, self.height * 0.68
+
+# === Search box ===
+    BoxLayout:
+        size_hint: None, None
+        size: 320, 30
+        pos_hint: {"center_x": 0.5, "top": 0.65}
+        padding: [8, 0, 8, 0]
+        spacing: 6
+
+        canvas.before:
+            # White background
+            Color:
+                rgba: 1, 1, 1, 1
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [15, 15, 15, 15]
+
+            # Border color (matches icon/text gray)
+            Color:
+                rgba: 220/255, 220/255, 220/255, 1
+            Line:
+                rounded_rectangle: (self.x, self.y, self.width, self.height, 15)
+                width: 1.1
+
+        # Search input field
+        TextInput:
+            id: search_input
+            size_hint_x: 1
+            multiline: False
+            hint_text: "Search"
+            hint_text_color: 166/255, 166/255, 166/255, 1  # Matches border and icon color
+            foreground_color: 0, 0, 0, 1
+            background_color: 0, 0, 0, 0
+            padding: [12, (self.height - self.line_height)/2, 0, 0]
+            font_size: 14
+            cursor_color: 0, 0, 0, 1
+            on_text: root.on_search_text(self.text) if hasattr(root, "on_search_text") else None
+
+        # Search icon (gray tone)
+        Image:
+            source: "app/assets/search.png"
+            size_hint: None, None
+            size: 17, 17
+            allow_stretch: True
+            keep_ratio: True
+            pos_hint: {"center_y": 0.5}
+
+# === Save Area ===
+    BoxLayout:
+        orientation: "vertical"
+        size_hint: None, None
+        size: 320, 230  # compact to fit the card area
+        pos_hint: {"center_x": 0.5, "top": 0.59}  # positioned right below search bar
+        spacing: 6
+        padding: [0, 0, 0, 6]
+
+        # Scrollable area for tree cards
+        ScrollView:
+            size_hint_y: 0.82  # leaves space for add field
+            bar_width: 6
+            scroll_type: ['bars', 'content']
+            effect_cls: "ScrollEffect"
+
+            BoxLayout:
+                id: tree_list
+                orientation: "vertical"
+                spacing: 8
+                size_hint_y: None
+                height: self.minimum_height
+
+        # Add new tree field
+        BoxLayout:
+            size_hint_y: None
+            height: 38
+            spacing: 6
+
+            canvas.before:
+                Color:
+                    rgba: 241/255, 241/255, 241/255, 1
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [10, 10, 10, 10]
+                Color:
+                    rgba: 0, 0, 0, 0.08  # thin border
+                Line:
+                    rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
+                    width: 1
+
+            TextInput:
+                id: add_input
+                hint_text: "Add new tree"
+                font_size: 14
+                bold: True
+                halign: "left"
+                valign: "middle"
+                foreground_color: 99/255, 99/255, 99/255, 1
+                background_color: 0, 0, 0, 0
+                padding: [12, 10, 0, 0]
+                multiline: False
+                cursor_color: 99/255, 99/255, 99/255, 1
+
+            Button:
+                text: "+"
+                size_hint: None, 1
+                width: 38
+                font_size: 20
+                background_normal: ""
+                background_color: 0, 0, 0, 0
+                color: 99/255, 99/255, 99/255, 1
+                on_release: root.on_add_tree()
+
+    # === Save Button ===
+    RoundedButton:
+        id: save_button
+        size_hint: None, None
+        size: 80, 44
+        pos_hint: {"right": 0.85, "y": 0.20}  # refined vertical alignment
+        on_release: root.on_save_button() if hasattr(root, "on_save_button") else None
+
+        canvas.before:
+            Color:
+                rgba: 39/255, 98/255, 39/255, 1  # green color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [10, 10, 10, 10]
+
+        BoxLayout:
+            orientation: "horizontal"
+            padding: [0, 0, 0, 0]
+            spacing: 0
+            size: save_button.size
+            pos: save_button.pos
+
+            Label:
+                text: "Save"
+                color: 1, 1, 1, 1
+                font_size: 16
+                bold: True
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+
+    # === Back Button ===
+    RoundedButton:
+        id: back_button
+        size_hint: None, None
+        size: 96, 42
+        pos_hint: {"center_x": 0.25, "y": 0.05}
+        on_release: app.root.current = 'capture_result'
+
+        canvas.before:
+            # Shadow
+            Color:
+                rgba: 0, 0, 0, 0.2
+            RoundedRectangle:
+                pos: self.x + 1, self.y - 2
+                size: self.size
+                radius: [14, 14, 14, 14]
+            # Blur Base
+            Color:
+                rgba: 0.9, 0.9, 0.9, 0.4
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [14, 14, 14, 14]
+            # Button Surface
+            Color:
+                rgba: 1, 1, 1, 0.7
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [14, 14, 14, 14]
+
+        BoxLayout:
+            orientation: "horizontal"
+            size: back_button.size
+            pos: back_button.pos
+            spacing: 4
+
+            Widget:
+                size_hint_x: 1
+
+            Image:
+                source: "app/assets/back.png"
+                allow_stretch: True
+                keep_ratio: True
+                size_hint: None, None
+                size: 17, 17
+                pos_hint: {"center_y": 0.5}
+                
+            Label:
+                text: "Back"
+                color: 0/255., 56/255., 0/255., 1
+                font_size: 15
+                bold: True
+                size_hint_x: None
+                width: self.texture_size[0]
+                halign: "left"
+                valign: "middle"
+                pos_hint: {"center_y": 0.5}
+            
+            Widget:
+                size_hint_x: 1
