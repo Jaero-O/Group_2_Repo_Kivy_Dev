@@ -1,17 +1,17 @@
-<ScanScreen>:
+<CaptureResultScreen>:
     canvas.before:
         Rectangle:
-            source: "assets/placeholder_bg1.png"
+            source: "app/assets/placeholder_bg1.png"
             pos: self.pos
             size: self.size
 
-    # === CANCEL BUTTON ===
+    # === RESULT BUTTON ===
     RoundedButton:
-        id: cancel_button
+        id: result_button
         size_hint: None, None
         size: 60, 60
         pos_hint: {"center_x": 0.20, "y": 0.07}
-        on_release: app.root.current = 'home'
+        on_release: app.root.current = 'result'
 
         canvas.before:
             Color:
@@ -28,21 +28,21 @@
                 radius: [18, 18, 18, 18]
 
         RelativeLayout:
-            size: cancel_button.size
-            pos: cancel_button.pos
+            size: result_button.size
+            pos: result_button.pos
             BoxLayout:
                 orientation: "vertical"
                 size_hint: 1, 1
                 spacing: 2
                 padding: [0, 10, 0, 6]
                 Image:
-                    source: "assets/cancel.png"
+                    source: "app/assets/result.png"
                     allow_stretch: True
                     keep_ratio: True
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
                 Label:
-                    text: "Cancel"
+                    text: "Result"
                     color: 0/255., 114/255., 0/255., 1
                     font_size: 13
                     bold: True
@@ -51,13 +51,13 @@
                     valign: "middle"
                     text_size: self.size
 
-    # === SCAN BUTTON ===
+    # === RETAKE BUTTON ===
     GradientScanButton:
-        id: scan_button
+        id: retake_button
         size_hint: None, None
         size: 100, 100
-        pos_hint: {"center_x": 0.50, "y": 0.04}
-        on_release: app.root.current = 'scanning'
+        pos_hint: {"center_x": 0.5, "y": 0.04}
+        on_release: app.root.current = 'scan'
 
         canvas.before:
             Color:
@@ -75,21 +75,21 @@
                 radius: [25, 25, 25, 25]
 
         RelativeLayout:
-            size: scan_button.size
-            pos: scan_button.pos
+            size: retake_button.size
+            pos: retake_button.pos
             BoxLayout:
                 orientation: "vertical"
                 size_hint: 1, 1
                 spacing: 3
                 padding: [0, 15, 0, 8]
                 Image:
-                    source: "assets/scan2.png"
+                    source: "app/assets/scan2.png"
                     allow_stretch: True
                     keep_ratio: True
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
                 Label:
-                    text: "Scan"
+                    text: "Retake"
                     color: 1, 1, 1, 1
                     font_size: 16
                     bold: True
@@ -98,13 +98,13 @@
                     valign: "middle"
                     text_size: self.size
 
-    # === GUIDE BUTTON ===
+    # === SAVE BUTTON ===
     RoundedButton:
-        id: guide_button
+        id: save_button
         size_hint: None, None
         size: 60, 60
         pos_hint: {"center_x": 0.80, "y": 0.07}
-        on_release: app.root.current = 'guide'
+        on_release: app.root.current = 'save'
 
         canvas.before:
             Color:
@@ -121,21 +121,21 @@
                 radius: [18, 18, 18, 18]
 
         RelativeLayout:
-            size: guide_button.size
-            pos: guide_button.pos
+            size: save_button.size
+            pos: save_button.pos
             BoxLayout:
                 orientation: "vertical"
                 size_hint: 1, 1
                 spacing: 2
                 padding: [0, 10, 0, 6]
                 Image:
-                    source: "assets/guide.png"
+                    source: "app/assets/save.png"
                     allow_stretch: True
                     keep_ratio: True
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
                 Label:
-                    text: "Guide"
+                    text: "Save"
                     color: 0/255., 114/255., 0/255., 1
                     font_size: 13
                     bold: True
