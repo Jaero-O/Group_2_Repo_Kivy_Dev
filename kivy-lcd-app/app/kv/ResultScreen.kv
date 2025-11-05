@@ -3,7 +3,7 @@
 <ResultScreen>:
     canvas.before:
         Color:
-            rgba: 1, 1, 1, 1
+            rgba: 248/255, 248/255, 248/255, 1
         Rectangle:
             pos: self.pos
             size: self.size
@@ -49,8 +49,8 @@
         id: back_button
         size_hint: None, None
         size: 100, 36         # 75×29 scaled up
-        pos_hint: {"x": 0.80, "y": 0.915}
-        on_release: app.root.current = 'capture_result'
+        pos_hint: {"x": 0.79, "y": 0.915}
+        on_release: root.go_back()
 
         BoxLayout:
             orientation: "horizontal"
@@ -72,7 +72,7 @@
             Label:
                 text: "Back"
                 color: (0/255, 121/255, 0/255, 1)
-                font_size: 20
+                font_size: 16
                 bold: True
                 size_hint_x: None
                 width: self.texture_size[0]

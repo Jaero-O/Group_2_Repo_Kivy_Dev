@@ -9,3 +9,4 @@ from .scanning_screen import ScanningScreen
 from .capture_result_screen import CaptureResultScreen
 from .result_screen import ResultScreen
 from .save_screen import SaveScreen
+from .image_selection import ImageSelection
