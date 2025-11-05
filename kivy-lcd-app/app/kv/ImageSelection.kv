@@ -1,0 +1,247 @@
+#:kivy 2.0.0
+
+<ImageSelection>
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # --- HEADER SECTION ---
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        height: 50
+        width: self.parent.width
+        pos_hint: {"x": 0.06, "y": 0.92}
+        spacing: 5.3
+
+        Image:
+            source: "app/assets/records.png"
+            size_hint: None, None
+            size: 35, 35
+            allow_stretch: True
+            keep_ratio: True
+            color: (6/255, 87/255, 6/255, 1)
+
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        height: 50
+        width: self.parent.width
+        pos_hint: {"x": 0.17, "y": 0.91}
+        spacing: 5.3
+
+        Label:
+            text: "Records"
+            color: (5/255, 71/255, 5/255, 1)
+            font_size: 32
+            bold: True
+            valign: "middle"
+            halign: "left"
+            text_size: self.size
+
+    # --- BACK BUTTON ---
+    RoundedButton:
+        id: back_button
+        size_hint: None, None
+        size: 100, 36
+        pos_hint: {"x": 0.79, "y": 0.915}
+        on_release: app.root.current = 'records'
+
+        BoxLayout:
+            orientation: "horizontal"
+            size: self.size
+            spacing: 6
+            padding: [0, 0, 0, 0]
+            pos_hint: {"center_y": 0.5}
+            size: back_button.size
+            pos: back_button.pos
+
+            Image:
+                source: "app/assets/back.png"
+                allow_stretch: True
+                keep_ratio: True
+                size_hint: None, None
+                size: 20, 20
+                pos_hint: {"center_y": 0.5}
+
+            Label:
+                text: "Back"
+                color: (0/255, 121/255, 0/255, 1)
+                font_size: 16
+                bold: True
+                size_hint_x: None
+                width: self.texture_size[0]
+                halign: "left"
+                valign: "middle"
+                pos_hint: {"center_y": 0.5}
+
+
+    # --- IMAGE GALLERY SECTION ---
+    ScrollView:
+        size_hint: (1, None)
+        height: root.height * 0.82  # Use a bit more height to bring images up
+        pos_hint: {"x": 0, "y": 0.04}  # Slightly higher starting position
+        bar_width: 8
+        do_scroll_x: False
+
+        GridLayout:
+            id: image_grid
+            cols: 3
+            spacing: [2, 2]  # Reduced space between columns and rows
+            padding: [0, 0, 0, 0]  # No side margins
+            size_hint_y: None
+            height: self.minimum_height
+
+            # 21 placeholder images
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+            RecycleViewImage:
+                source: "app/assets/placeholder_gallery.png"
+                size_hint: None, None
+                size: 156, 133
+
+    # --- FILTER BAR SECTION ---
+    FloatLayout:
+        size_hint: None, None
+        size: 418, 36
+        pos_hint: {"center_x": 0.5, "y": 0.15}
+
+        # Gray highlight background (animated)
+        canvas.before:
+            Color:
+                rgba: 1, 1, 1, 0.75
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [18, 18, 18, 18]
+
+            Color:
+                rgba: 0.7, 0.7, 0.7, 1
+            RoundedRectangle:
+                pos: (self.x + root.highlight_x, self.y + 4)
+                size: (90, 28)
+                radius: [15, 15, 15, 15]
+
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint: None, None
+            size: 418, 36
+            spacing: 0
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+            Button:
+                text: "Years"
+                background_normal: ''
+                background_color: (0, 0, 0, 0)
+                color: (1, 1, 1, 1) if root.active_filter == "Years" else (64/255, 64/255, 64/255, 1)
+                bold: True
+                font_size: 14
+                on_release: root.move_highlight("Years")
+
+            Button:
+                text: "Months"
+                background_normal: ''
+                background_color: (0, 0, 0, 0)
+                color: (1, 1, 1, 1) if root.active_filter == "Months" else (64/255, 64/255, 64/255, 1)
+                bold: True
+                font_size: 14
+                on_release: root.move_highlight("Months")
+
+            Button:
+                text: "Days"
+                background_normal: ''
+                background_color: (0, 0, 0, 0)
+                color: (1, 1, 1, 1) if root.active_filter == "Days" else (64/255, 64/255, 64/255, 1)
+                bold: True
+                font_size: 14
+                on_release: root.move_highlight("Days")
+
+            Button:
+                text: "All Photos"
+                background_normal: ''
+                background_color: (0, 0, 0, 0)
+                color: (1, 1, 1, 1) if root.active_filter == "All Photos" else (64/255, 64/255, 64/255, 1)
+                bold: True
+                font_size: 14
+                on_release: root.move_highlight("All Photos")

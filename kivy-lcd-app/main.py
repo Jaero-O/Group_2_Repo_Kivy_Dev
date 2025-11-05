@@ -12,7 +12,7 @@ from app.core import setup_window, BASE_WIDTH, BASE_HEIGHT
 from app.screens import (
     WelcomeScreen, HomeScreen, ScanScreen, RecordsScreen,
     ShareScreen, HelpScreen, GuideScreen, ScanningScreen,
-    CaptureResultScreen, ResultScreen, SaveScreen
+    CaptureResultScreen, ResultScreen, SaveScreen, ImageSelection
 )
 
 # =========================================
@@ -27,6 +27,7 @@ setup_window()
 class MangofyApp(App):
     scale_x = NumericProperty(1)
     scale_y = NumericProperty(1)
+    last_screen = None  # ✅ Track where 'result' was opened from
 
     def build(self):
         # ✅ Locate the KV directory inside the app folder
@@ -37,7 +38,7 @@ class MangofyApp(App):
             "WelcomeScreen.kv", "HomeScreen.kv", "ScanScreen.kv",
             "RecordsScreen.kv", "ShareScreen.kv", "HelpScreen.kv",
             "GuideScreen.kv", "ScanningScreen.kv", "CaptureResultScreen.kv",
-            "ResultScreen.kv", "SaveScreen.kv"
+            "ResultScreen.kv", "SaveScreen.kv", "ImageSelection.kv"
         ]
         for kv in kv_files:
             kv_path = os.path.join(kv_dir, kv)
@@ -54,7 +55,7 @@ class MangofyApp(App):
             (ShareScreen, 'share'), (HelpScreen, 'help'),
             (GuideScreen, 'guide'), (ScanningScreen, 'scanning'),
             (CaptureResultScreen, 'capture_result'),
-            (ResultScreen, 'result'), (SaveScreen, 'save')
+            (ResultScreen, 'result'), (SaveScreen, 'save'), (ImageSelection, 'image_select')
         ]:
             sm.add_widget(scr(name=name))
 
