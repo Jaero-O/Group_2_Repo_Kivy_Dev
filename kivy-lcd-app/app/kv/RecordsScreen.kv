@@ -22,7 +22,7 @@
 <RecordsScreen>
     canvas.before:
         Color:
-            rgba: 1, 1, 1, 1
+            rgba: 248/255, 248/255, 248/255, 1
         Rectangle:
             pos: self.pos
             size: self.size
@@ -138,6 +138,113 @@
             allow_stretch: True
             keep_ratio: True
             pos_hint: {"center_y": 0.5}
+
+    # === ACTION BUTTONS (Edit and Delete) ===
+    BoxLayout:
+        id: action_buttons
+        orientation: "horizontal"
+        size_hint: None, None
+        size: 180, 40
+        pos_hint: {"right": 0.89, "top": 0.785}
+        spacing: 12
+        opacity: 0
+        disabled: True
+
+        # Edit Button
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint: None, None
+            size: 80, 40
+            spacing: 5
+            padding: [8, 0, 8, 0]
+
+            canvas.before:
+                Color:
+                    rgba: 240/255, 248/255, 255/255, 1  # Light blue background
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [8]
+                Color:
+                    rgba: 100/255, 149/255, 237/255, 0.3  # Blue border
+                Line:
+                    rounded_rectangle: (self.x, self.y, self.width, self.height, 8)
+                    width: 1.5
+
+            Button:
+                size_hint: 1, 1
+                background_normal: ''
+                background_color: 0, 0, 0, 0
+                on_release: root.on_edit_button()
+
+                FloatLayout:
+                    size: self.parent.size
+                    pos: self.parent.pos
+
+                    Image:
+                        source: "app/assets/edit.png"
+                        size_hint: None, None
+                        size: 20, 20
+                        pos_hint: {"x": 0.05, "center_y": 0.5}
+                        allow_stretch: True
+                        keep_ratio: True
+
+                    Label:
+                        text: "Edit"
+                        color: 30/255, 100/255, 180/255, 1  # Blue text
+                        font_size: 14
+                        bold: True
+                        pos_hint: {"right": 0.95, "center_y": 0.5}
+                        size_hint: None, None
+                        size: self.texture_size
+
+        # Delete Button
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint: None, None
+            size: 88, 40
+            spacing: 5
+            padding: [6, 0, 6, 0]
+
+            canvas.before:
+                Color:
+                    rgba: 255/255, 240/255, 240/255, 1  # Light red background
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [8]
+                Color:
+                    rgba: 220/255, 53/255, 69/255, 0.4  # Red border
+                Line:
+                    rounded_rectangle: (self.x, self.y, self.width, self.height, 8)
+                    width: 1.5
+
+            Button:
+                size_hint: 1, 1
+                background_normal: ''
+                background_color: 0, 0, 0, 0
+                on_release: root.on_delete_button()
+
+                FloatLayout:
+                    size: self.parent.size
+                    pos: self.parent.pos
+
+                    Image:
+                        source: "app/assets/delete.png"
+                        size_hint: None, None
+                        size: 20, 20
+                        pos_hint: {"x": 0.05, "center_y": 0.5}
+                        allow_stretch: True
+                        keep_ratio: True
+
+                    Label:
+                        text: "Delete"
+                        color: 220/255, 53/255, 69/255, 1
+                        font_size: 14
+                        bold: True
+                        pos_hint: {"right": 0.95, "center_y": 0.5}
+                        size_hint: None, None
+                        size: self.texture_size
 
     # === MAIN CONTENT AREA ===
     FloatLayout:
