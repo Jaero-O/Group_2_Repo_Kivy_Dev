@@ -5,13 +5,14 @@ from kivy.graphics import Color, RoundedRectangle, Line
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.behaviors import ButtonBehavior
+from kivy.clock import Clock
 
 
 class TreeItem(ButtonBehavior, BoxLayout):
     pass
 
 class SaveScreen(Screen):
-    selected_tree = ObjectProperty(None, rebind=True)
+    selected_tree = ObjectProperty(None, rebind=True, allownone=True)
 
     def on_pre_enter(self, *args):
         self.build_tree_list()
@@ -20,6 +21,8 @@ class SaveScreen(Screen):
         tree_list = self.ids.tree_list
         tree_list.clear_widgets()
         self.trees = ["Kenny Tree", "Jae Tree", "Lei Tree", "Emilay Tree"]
+        self.filtered_trees = self.trees.copy()
+        self.selected_tree = None
         for name in self.trees:
             self.add_tree_item(name)
 
@@ -63,6 +66,7 @@ class SaveScreen(Screen):
         )
         label.bind(size=lambda l, _: setattr(l, 'text_size', (l.width, None)))
         box.add_widget(label)
+        box.tree_name = name  # Store the tree name
         self.ids.tree_list.add_widget(box)
 
         # === Fade-in animation ===
@@ -82,15 +86,43 @@ class SaveScreen(Screen):
     def on_add_tree(self):
         new_name = self.ids.add_input.text.strip()
         if new_name:
+            if new_name in self.trees:
+                self.show_popup(f"'{new_name}' already exists!")
+                return
+            
+            self.trees.append(new_name)
+            self.filtered_trees.append(new_name)
             self.add_tree_item(new_name)
             self.ids.add_input.text = ''
+            self.show_popup(f"'{new_name}' added successfully!")
+
+    def on_search_text(self, text):
+        """Filter tree list based on search text"""
+        tree_list = self.ids.tree_list
+        tree_list.clear_widgets()
+        
+        search_text = text.lower().strip()
+        
+        if search_text:
+            self.filtered_trees = [t for t in self.trees if search_text in t.lower()]
+        else:
+            self.filtered_trees = self.trees.copy()
+        
+        # Clear selection when searching
+        self.selected_tree = None
+        
+        for name in self.filtered_trees:
+            self.add_tree_item(name)
+        
+        # Scroll to top after filtering
+        Clock.schedule_once(lambda dt: setattr(self.ids.scroll_view, 'scroll_y', 1), 0.1)
 
     def on_save_button(self):
         if not self.selected_tree:
             self.show_popup("Please select a tree first")
             return
 
-        message = f"Successfully saved in '{self.selected_tree}' !"
+        message = f"Successfully saved in '{self.selected_tree}'!"
         self.show_popup(message)
 
     def show_popup(self, message):

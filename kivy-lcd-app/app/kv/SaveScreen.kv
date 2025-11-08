@@ -72,7 +72,7 @@
                 size: self.width * 0.7, 1.5
                 pos: self.width * 0.15, self.height * 0.68
 
-# === Search box ===
+    # === Search box ===
     BoxLayout:
         size_hint: None, None
         size: 320, 30
@@ -89,7 +89,7 @@
                 size: self.size
                 radius: [15, 15, 15, 15]
 
-            # Border color (matches icon/text gray)
+            # Border color
             Color:
                 rgba: 220/255, 220/255, 220/255, 1
             Line:
@@ -102,15 +102,15 @@
             size_hint_x: 1
             multiline: False
             hint_text: "Search"
-            hint_text_color: 166/255, 166/255, 166/255, 1  # Matches border and icon color
+            hint_text_color: 166/255, 166/255, 166/255, 1
             foreground_color: 0, 0, 0, 1
             background_color: 0, 0, 0, 0
             padding: [12, (self.height - self.line_height)/2, 0, 0]
             font_size: 14
             cursor_color: 0, 0, 0, 1
-            on_text: root.on_search_text(self.text) if hasattr(root, "on_search_text") else None
+            on_text: root.on_search_text(self.text)
 
-        # Search icon (gray tone)
+        # Search icon
         Image:
             source: "app/assets/search.png"
             size_hint: None, None
@@ -119,21 +119,26 @@
             keep_ratio: True
             pos_hint: {"center_y": 0.5}
 
-# === Save Area ===
+    # === Save Area ===
     BoxLayout:
         orientation: "vertical"
         size_hint: None, None
-        size: 320, 230  # compact to fit the card area
-        pos_hint: {"center_x": 0.5, "top": 0.59}  # positioned right below search bar
+        size: 320, 230
+        pos_hint: {"center_x": 0.5, "top": 0.59}
         spacing: 6
         padding: [0, 0, 0, 6]
 
         # Scrollable area for tree cards
         ScrollView:
-            size_hint_y: 0.82  # leaves space for add field
+            id: scroll_view
+            size_hint_y: 0.82
             bar_width: 6
+            bar_color: 200/255, 200/255, 200/255, 1
+            bar_inactive_color: 230/255, 230/255, 230/255, 0.5
             scroll_type: ['bars', 'content']
             effect_cls: "ScrollEffect"
+            do_scroll_x: False
+            do_scroll_y: True
 
             BoxLayout:
                 id: tree_list
@@ -156,7 +161,7 @@
                     size: self.size
                     radius: [10, 10, 10, 10]
                 Color:
-                    rgba: 0, 0, 0, 0.08  # thin border
+                    rgba: 0, 0, 0, 0.08
                 Line:
                     rounded_rectangle: (self.x, self.y, self.width, self.height, 10)
                     width: 1
@@ -164,15 +169,17 @@
             TextInput:
                 id: add_input
                 hint_text: "Add new tree"
+                hint_text_color: 166/255, 166/255, 166/255, 1
                 font_size: 14
                 bold: True
                 halign: "left"
                 valign: "middle"
-                foreground_color: 99/255, 99/255, 99/255, 1
+                foreground_color: 79/255, 79/255, 79/255, 1
                 background_color: 0, 0, 0, 0
                 padding: [12, 10, 0, 0]
                 multiline: False
-                cursor_color: 99/255, 99/255, 99/255, 1
+                cursor_color: 79/255, 79/255, 79/255, 1
+                on_text_validate: root.on_add_tree()
 
             Button:
                 text: "+"
@@ -181,7 +188,8 @@
                 font_size: 20
                 background_normal: ""
                 background_color: 0, 0, 0, 0
-                color: 99/255, 99/255, 99/255, 1
+                color: 79/255, 79/255, 79/255, 1
+                bold: True
                 on_release: root.on_add_tree()
 
     # === Save Button ===
@@ -189,12 +197,12 @@
         id: save_button
         size_hint: None, None
         size: 80, 44
-        pos_hint: {"right": 0.85, "y": 0.20}  # refined vertical alignment
-        on_release: root.on_save_button() if hasattr(root, "on_save_button") else None
+        pos_hint: {"right": 0.85, "y": 0.20}
+        on_release: root.on_save_button()
 
         canvas.before:
             Color:
-                rgba: 39/255, 98/255, 39/255, 1  # green color
+                rgba: 39/255, 98/255, 39/255, 1
             RoundedRectangle:
                 pos: self.pos
                 size: self.size

@@ -12,7 +12,8 @@ from app.core import setup_window, BASE_WIDTH, BASE_HEIGHT
 from app.screens import (
     WelcomeScreen, HomeScreen, ScanScreen, RecordsScreen,
     ShareScreen, HelpScreen, GuideScreen, ScanningScreen,
-    CaptureResultScreen, ResultScreen, SaveScreen, ImageSelection
+    CaptureResultScreen, ResultScreen, SaveScreen, ImageSelection,
+    AnthracnoseScreen, SystemSpecScreen, PrecautionScreen, AboutUsScreen
 )
 
 # =========================================
@@ -38,7 +39,9 @@ class MangofyApp(App):
             "WelcomeScreen.kv", "HomeScreen.kv", "ScanScreen.kv",
             "RecordsScreen.kv", "ShareScreen.kv", "HelpScreen.kv",
             "GuideScreen.kv", "ScanningScreen.kv", "CaptureResultScreen.kv",
-            "ResultScreen.kv", "SaveScreen.kv", "ImageSelection.kv"
+            "ResultScreen.kv", "SaveScreen.kv", "ImageSelection.kv",
+            "AnthracnoseScreen.kv", "SystemSpecScreen.kv", "PrecautionScreen.kv",
+            "AboutUsScreen.kv"
         ]
         for kv in kv_files:
             kv_path = os.path.join(kv_dir, kv)
@@ -54,8 +57,10 @@ class MangofyApp(App):
             (ScanScreen, 'scan'), (RecordsScreen, 'records'),
             (ShareScreen, 'share'), (HelpScreen, 'help'),
             (GuideScreen, 'guide'), (ScanningScreen, 'scanning'),
-            (CaptureResultScreen, 'capture_result'),
-            (ResultScreen, 'result'), (SaveScreen, 'save'), (ImageSelection, 'image_select')
+            (CaptureResultScreen, 'capture_result'), (ResultScreen, 'result'),
+            (SaveScreen, 'save'), (ImageSelection, 'image_select'),
+            (AnthracnoseScreen, 'anthracnose'), (SystemSpecScreen, 'system_spec'),
+            (PrecautionScreen, 'precaution'), (AboutUsScreen, 'about_us')
         ]:
             sm.add_widget(scr(name=name))
 
