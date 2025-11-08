@@ -88,14 +88,10 @@ Builder.load_string("""
 
 
 class RecordTreeItem(ButtonBehavior, BoxLayout):
-    """Single record card with edit/delete buttons"""
+    """Single record card"""
     is_editing = BooleanProperty(False)
     tree_name = StringProperty("")
-    
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.click_count = 0
-        self.click_timer = None
+    is_selected = BooleanProperty(False)
 
 
 class RecordsScreen(Screen):
@@ -111,6 +107,10 @@ class RecordsScreen(Screen):
         self.trees = ["Kenny Tree", "Jae Tree", "Lei Tree", "Kenny Tree", "Jae Tree", "Lei Tree"]
         self.filtered_trees = self.trees.copy()
         
+        # Hide action buttons initially
+        self.ids.action_buttons.opacity = 0
+        self.ids.action_buttons.disabled = True
+        
         for name in self.trees:
             self.add_tree_item(name)
 
@@ -118,7 +118,10 @@ class RecordsScreen(Screen):
         # Create card
         box = RecordTreeItem(tree_name=name)
         
-        # Main label
+        # Main content container
+        content_box = BoxLayout(orientation='horizontal', spacing=10)
+        
+        # Tree name label
         label = Label(
             text=name,
             color=(56/255, 73/255, 38/255, 1),
@@ -128,74 +131,29 @@ class RecordsScreen(Screen):
             valign='middle',
         )
         label.bind(size=lambda l, _: setattr(l, 'text_size', (l.width, None)))
-        box.add_widget(label)
+        content_box.add_widget(label)
         box.label = label
 
-        # Buttons container (hidden by default) - Always on the right
-        buttons_container = BoxLayout(
+        # "View Records" button
+        view_button = Button(
+            text="View Records",
+            color=(56/255, 73/255, 38/255, 0.7),
+            font_size=14,
+            italic=True,
+            halign='right',
+            valign='middle',
             size_hint=(None, 1),
-            width=0,
-            spacing=8,
-            opacity=0,
-            pos_hint={'right': 1}
-        )
-
-        # Edit button (no background)
-        edit_btn = Button(
-            size_hint=(None, None),
-            size=(40, 40),
+            width=100,
             background_normal='',
-            background_color=(0, 0, 0, 0)
+            background_color=(0, 0, 0, 0),
+            bold=False
         )
+        view_button.bind(on_release=lambda btn: self.navigate_to_image_selection(box))
+        content_box.add_widget(view_button)
         
-        edit_icon = Image(
-            source="app/assets/edit.png",
-            size_hint=(None, None),
-            size=(24, 24),
-            allow_stretch=True,
-            keep_ratio=True
-        )
-        
-        # Center icon in button
-        edit_btn.bind(
-            pos=lambda btn, v: setattr(edit_icon, 'center', btn.center),
-            size=lambda btn, v: setattr(edit_icon, 'center', btn.center)
-        )
-        
-        edit_btn.add_widget(edit_icon)
-        edit_btn.bind(on_release=lambda btn: self.edit_tree(box))
+        box.add_widget(content_box)
 
-        # Delete button (no background)
-        delete_btn = Button(
-            size_hint=(None, None),
-            size=(40, 40),
-            background_normal='',
-            background_color=(0, 0, 0, 0)
-        )
-        
-        delete_icon = Image(
-            source="app/assets/delete.png",
-            size_hint=(None, None),
-            size=(24, 24),
-            allow_stretch=True,
-            keep_ratio=True
-        )
-        
-        # Center icon in button
-        delete_btn.bind(
-            pos=lambda btn, v: setattr(delete_icon, 'center', btn.center),
-            size=lambda btn, v: setattr(delete_icon, 'center', btn.center)
-        )
-        
-        delete_btn.add_widget(delete_icon)
-        delete_btn.bind(on_release=lambda btn: self.confirm_delete(box))
-
-        buttons_container.add_widget(edit_btn)
-        buttons_container.add_widget(delete_btn)
-        box.add_widget(buttons_container)
-        box.buttons_container = buttons_container
-
-        # Click detection
+        # Click detection for card selection (not navigation)
         box.bind(on_release=self.on_card_click)
         box.is_selected = False
         
@@ -206,40 +164,98 @@ class RecordsScreen(Screen):
         Animation(opacity=1, duration=0.3, t='out_quad').start(box)
 
     def on_card_click(self, card):
-        """Handle single and double clicks"""
-        card.click_count += 1
-        
-        if card.click_timer:
-            card.click_timer.cancel()
-        
-        def check_clicks(dt):
-            if card.click_count == 1:
-                self.toggle_card_buttons(card)
-            elif card.click_count >= 2:
-                self.navigate_to_image_selection(card)
-            card.click_count = 0
-        
-        card.click_timer = Clock.schedule_once(check_clicks, 0.3)
-
-    def toggle_card_buttons(self, card):
-        """Show/hide edit and delete buttons"""
+        """Handle card selection"""
+        # Deselect previous card
         if self.active_card and self.active_card != card:
-            self.hide_card_buttons(self.active_card)
+            self.deselect_card(self.active_card)
         
-        if card.buttons_container.opacity == 0:
-            self.show_card_buttons(card)
-            self.active_card = card
-        else:
-            self.hide_card_buttons(card)
+        # Toggle selection of current card
+        if self.active_card == card:
+            self.deselect_card(card)
+            self.hide_action_buttons()
             self.active_card = None
+        else:
+            self.select_card(card)
+            self.active_card = card
 
-    def show_card_buttons(self, card):
-        """Animate showing buttons"""
-        Animation(width=96, opacity=1, duration=0.2, t='out_quad').start(card.buttons_container)
+    def select_card(self, card):
+        """Highlight card and show action buttons"""
+        card.is_selected = True
+        
+        # Change card background to match SaveScreen highlight color
+        with card.canvas.before:
+            from kivy.graphics import Color, RoundedRectangle, Line
+            card.canvas.before.clear()
+            Color(183/255, 255/255, 138/255, 1)  # Same as SaveScreen
+            card.bg_rect = RoundedRectangle(
+                pos=card.pos,
+                size=card.size,
+                radius=[11]
+            )
+            Color(0, 0, 0, 0.15)
+            card.border = Line(
+                rounded_rectangle=(card.x, card.y, card.width, card.height, 11),
+                width=1.5
+            )
+        
+        card.bind(
+            pos=lambda w, v: self.update_card_graphics(w),
+            size=lambda w, v: self.update_card_graphics(w)
+        )
+        
+        # Show action buttons
+        self.show_action_buttons()
 
-    def hide_card_buttons(self, card):
-        """Animate hiding buttons"""
-        Animation(width=0, opacity=0, duration=0.2, t='out_quad').start(card.buttons_container)
+    def deselect_card(self, card):
+        """Remove highlight from card"""
+        card.is_selected = False
+        
+        # Reset card background to original color
+        with card.canvas.before:
+            from kivy.graphics import Color, RoundedRectangle, Line
+            card.canvas.before.clear()
+            Color(232/255, 255/255, 208/255, 1)  # Original green
+            card.bg_rect = RoundedRectangle(
+                pos=card.pos,
+                size=card.size,
+                radius=[11]
+            )
+            Color(0, 0, 0, 0.1)
+            card.border = Line(
+                rounded_rectangle=(card.x, card.y, card.width, card.height, 11),
+                width=1
+            )
+
+    def update_card_graphics(self, card):
+        """Update card graphics when position or size changes"""
+        if hasattr(card, 'bg_rect'):
+            card.bg_rect.pos = card.pos
+            card.bg_rect.size = card.size
+            card.border.rounded_rectangle = (card.x, card.y, card.width, card.height, 11)
+
+    def show_action_buttons(self):
+        """Animate showing action buttons"""
+        self.ids.action_buttons.disabled = False
+        Animation(opacity=1, duration=0.2, t='out_quad').start(self.ids.action_buttons)
+
+    def hide_action_buttons(self):
+        """Animate hiding action buttons"""
+        Animation(opacity=0, duration=0.2, t='out_quad').start(self.ids.action_buttons)
+        Clock.schedule_once(lambda dt: setattr(self.ids.action_buttons, 'disabled', True), 0.2)
+
+    def on_edit_button(self):
+        """Handle edit button click"""
+        if not self.active_card:
+            return
+        
+        self.edit_tree(self.active_card)
+
+    def on_delete_button(self):
+        """Handle delete button click"""
+        if not self.active_card:
+            return
+        
+        self.confirm_delete(self.active_card)
 
     def edit_tree(self, card):
         """Enable editing mode for tree name"""
@@ -249,8 +265,10 @@ class RecordsScreen(Screen):
         card.is_editing = True
         original_name = card.tree_name
         
-        self.hide_card_buttons(card)
-        card.remove_widget(card.label)
+        # Remove label temporarily
+        content_box = card.children[0]
+        label = content_box.children[1]  # The tree name label
+        content_box.remove_widget(label)
         
         # Create edit input
         edit_input = TextInput(
@@ -278,8 +296,8 @@ class RecordsScreen(Screen):
                 card.tree_name = new_name
                 card.label.text = new_name
                 
-                card.remove_widget(edit_input)
-                card.add_widget(card.label, index=0)
+                content_box.remove_widget(edit_input)
+                content_box.add_widget(card.label, index=1)
                 card.is_editing = False
                 
                 self.show_notification(f"Renamed to '{new_name}'")
@@ -287,12 +305,12 @@ class RecordsScreen(Screen):
                 cancel_edit()
         
         def cancel_edit(*args):
-            card.remove_widget(edit_input)
-            card.add_widget(card.label, index=0)
+            content_box.remove_widget(edit_input)
+            content_box.add_widget(card.label, index=1)
             card.is_editing = False
         
         edit_input.bind(on_text_validate=save_edit)
-        card.add_widget(edit_input, index=0)
+        content_box.add_widget(edit_input, index=1)
         edit_input.focus = True
 
     def confirm_delete(self, card):
@@ -318,6 +336,8 @@ class RecordsScreen(Screen):
             fade_out.start(card)
             
             close_modal()
+            self.hide_action_buttons()
+            self.active_card = None
             self.show_notification(f"'{card.tree_name}' deleted")
         
         modal.ids.cancel_btn.bind(on_release=close_modal)
@@ -356,6 +376,10 @@ class RecordsScreen(Screen):
             self.filtered_trees = [t for t in self.trees if search_text in t.lower()]
         else:
             self.filtered_trees = self.trees.copy()
+        
+        # Hide action buttons when searching
+        self.hide_action_buttons()
+        self.active_card = None
         
         for name in self.filtered_trees:
             self.add_tree_item(name)
