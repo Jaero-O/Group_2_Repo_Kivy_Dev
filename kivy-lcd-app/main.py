@@ -79,3 +79,4 @@ class MangofyApp(App):
 
 if __name__ == '__main__':
     MangofyApp().run()
+
