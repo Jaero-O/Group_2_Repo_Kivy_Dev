@@ -2,18 +2,21 @@
 
 <ShareScreen>
     canvas.before:
+        # Background color for the entire screen
         Color:
             rgba: 248/255, 248/255, 248/255, 1
         Rectangle:
             pos: self.pos
             size: self.size
 
+    # Share Card Section
     FloatLayout:
         size_hint: None, None
         size: 390, 567
         pos_hint: {"center_x": 0.5, "center_y": 0.5}
 
         canvas.before:
+            # Shadow for the card
             Color:
                 rgba: 0, 0, 0, 0.2
             RoundedRectangle:
@@ -21,16 +24,18 @@
                 size: self.size
                 radius: [15]
 
+            # Card background
             Color:
                 rgba: 1, 1, 1, 1
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
                 radius: [15]
-        
+
+        # Card Title
         Label:
             text: "Share records"
-            color: (85/255, 85/255, 85/255, 1)
+            color: 85/255, 85/255, 85/255, 1
             font_size: 24
             bold: True
             size_hint: None, None
@@ -38,10 +43,11 @@
             pos_hint: {"x": 0.10, "top": 0.95}
             halign: "left"
             valign: "middle"
-        
+
+        # Card Description
         Label:
             text: "To share images or records from the prototype to the app, simply scan the QR code below using your mobile device. Once scanned, the app will automatically receive and display the shared images or records for easy access and review."
-            color: (0/255, 0/255, 0/255, 0.57)
+            color: 0/255, 0/255, 0/255, 0.57
             font_size: 16
             bold: True
             size_hint: None, None
@@ -50,7 +56,8 @@
             halign: "left"
             valign: "top"
             text_size: self.size
-        
+
+        # QR Code Image
         Image:
             source: "app/assets/qr_placeholder.png"
             size_hint: None, None
@@ -58,9 +65,8 @@
             pos_hint: {"center_x": 0.5, "y": 0.12}
             allow_stretch: True
             keep_ratio: True
-            
 
-    # --- HEADER SECTION ---
+    # Header Section
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
@@ -75,7 +81,8 @@
             size: 35, 35
             allow_stretch: True
             keep_ratio: True
-            color: (6/255, 87/255, 6/255, 1)
+            color: 6/255, 87/255, 6/255, 1
+            mipmap: True
 
     BoxLayout:
         orientation: "horizontal"
@@ -87,14 +94,14 @@
 
         Label:
             text: "Share"
-            color: (5/255, 71/255, 5/255, 1)
+            color: 3/255, 30/255, 0/255, 1
             font_size: 32
             bold: True
             valign: "middle"
             halign: "left"
             text_size: self.size
 
-    # --- BACK BUTTON ---
+    # Back Button
     RoundedButton:
         id: back_button
         size_hint: None, None
@@ -118,10 +125,11 @@
                 size_hint: None, None
                 size: 20, 20
                 pos_hint: {"center_y": 0.5}
+                mipmap: True
 
             Label:
                 text: "Back"
-                color: (0/255, 121/255, 0/255, 1)
+                color: 3/255, 30/255, 0/255, 1
                 font_size: 16
                 bold: True
                 size_hint_x: None

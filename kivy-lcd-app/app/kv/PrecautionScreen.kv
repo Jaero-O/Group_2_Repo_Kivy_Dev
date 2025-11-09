@@ -1,6 +1,7 @@
 #:kivy 2.0.0
 
 <PrecautionScreen>
+    # Main Background
     canvas.before:
         Color:
             rgba: 248/255, 248/255, 248/255, 1
@@ -17,12 +18,12 @@
         spacing: 5.3
 
         Image:
-            source: "app/assets/help.png"
+            source: "app/assets/precaution_2.png"
             size_hint: None, None
             size: 35, 35
             allow_stretch: True
             keep_ratio: True
-            color: (6/255, 87/255, 6/255, 1)
+            mipmap: True
 
     BoxLayout:
         orientation: "horizontal"
@@ -34,14 +35,14 @@
 
         Label:
             text: "Guidelines and\nPrecautions"
-            color: (5/255, 71/255, 5/255, 1)
+            color: 3/255, 30/255, 0/255, 1
             font_size: 32
             bold: True
             valign: "middle"
             halign: "left"
             text_size: self.size
 
-    # --- BACK BUTTON ---
+    # Back Button
     RoundedButton:
         id: back_button
         size_hint: None, None
@@ -65,10 +66,11 @@
                 size_hint: None, None
                 size: 20, 20
                 pos_hint: {"center_y": 0.5}
+                mipmap: True
 
             Label:
                 text: "Back"
-                color: (0/255, 121/255, 0/255, 1)
+                color: 3/255, 30/255, 0/255, 1
                 font_size: 16
                 bold: True
                 size_hint_x: None
@@ -77,7 +79,7 @@
                 valign: "middle"
                 pos_hint: {"center_y": 0.5}
 
-    # --- SCROLLABLE CONTENT ---
+    # Content (Scrollable)
     ScrollView:
         size_hint: 0.88, 0.75
         pos_hint: {"x": 0.06, "y": 0.10}

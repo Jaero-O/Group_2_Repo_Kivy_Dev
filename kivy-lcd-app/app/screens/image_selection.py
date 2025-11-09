@@ -7,28 +7,30 @@ from kivy.app import App
 
 class RecycleViewImage(Image):
     """Clickable image inside the gallery."""
+
     def on_touch_down(self, touch):
+        """Handle image tap and navigate to the Result screen."""
         if self.collide_point(*touch.pos):
             app = App.get_running_app()
-            app.last_screen = 'image_select'  # ✅ Remember we came from image selection
-            app.root.current = 'result'       # Navigate to the Result screen
+            app.last_screen = 'image_select'
+            app.root.current = 'result'
             return True
         return super().on_touch_down(touch)
 
 
 class ImageSelection(Screen):
-    """Main image selection and filtering screen."""
+    """Main screen for selecting and filtering images."""
 
-    highlight_x = NumericProperty(104.5 * 3 + 6)  # Start highlight on 'All Photos'
+    highlight_x = NumericProperty(104.5 * 3 + 6)  # Starting position for highlight under 'All Photos'
     active_filter = StringProperty("All Photos")
     displayed_images = ListProperty([])
 
     def on_kv_post(self, base_widget):
-        """Once KV is loaded, initialize with 'All Photos'."""
+        """Initialize the screen once KV layout is loaded."""
         self.update_images("All Photos")
 
     def move_highlight(self, filter_name):
-        """Moves gray highlight and triggers image update."""
+        """Move the highlight bar and refresh displayed images."""
         filter_positions = {
             "Years": 0,
             "Months": 1,
@@ -39,7 +41,7 @@ class ImageSelection(Screen):
         index = filter_positions.get(filter_name, 3)
         new_x = 104.5 * index + 6
 
-        # Animate gray highlight movement
+        # Animate highlight bar movement
         Animation.cancel_all(self, 'highlight_x')
         anim = Animation(highlight_x=new_x, duration=0.25, t='out_quad')
         anim.start(self)
@@ -49,7 +51,7 @@ class ImageSelection(Screen):
         self.update_images(filter_name)
 
     def update_images(self, filter_name):
-        """Dynamically change image count based on selected filter."""
+        """Update the grid with the correct number of placeholder images."""
         if filter_name == "Years":
             count = 6
         elif filter_name == "Months":
@@ -62,11 +64,11 @@ class ImageSelection(Screen):
         placeholder = "app/assets/placeholder_gallery.png"
         self.displayed_images = [placeholder for _ in range(count)]
 
-        # Refresh grid
+        # Refresh the gallery with new images
         self.refresh_gallery()
 
     def refresh_gallery(self):
-        """Rebuild image grid with fade-in animation."""
+        """Rebuild the gallery grid with fade-in animations."""
         grid = self.ids.image_grid
         grid.clear_widgets()
 
@@ -79,7 +81,7 @@ class ImageSelection(Screen):
             )
             grid.add_widget(img)
 
-            # Fade-in animation
+            # Fade in each image with a small delay for a smooth effect
             delay = i * 0.04
             anim = Animation(opacity=1, duration=0.3, t='out_quad')
             anim.start(img)
