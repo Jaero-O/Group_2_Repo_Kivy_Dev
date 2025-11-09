@@ -2,53 +2,55 @@
 
 <ResultScreen>:
     canvas.before:
+        # Main background color and texture
         Color:
             rgba: 248/255, 248/255, 248/255, 1
         Rectangle:
             pos: self.pos
             size: self.size
 
-    # --- RESULT HEADER SECTION ---
+    # Header Section
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
-        height: 50        # 40 / 0.8
+        height: 50
         width: self.parent.width
-        pos_hint: {"x": 0.06, "y": 0.92}   # 0.045 → 0.06
-        spacing: 5.3      # 4 * (480/360)
+        pos_hint: {"x": 0.06, "y": 0.92}
+        spacing: 5.3
         valign: "left"
 
         Image:
             source: "app/assets/result.png"
             size_hint: None, None
-            size: 35, 35     # 26×28 → scaled back roughly to original ratio
+            size: 35, 35
             allow_stretch: True
             keep_ratio: True
             color: (6/255, 87/255, 6/255, 1)
+            mipmap: True
 
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
         height: 50
         width: self.parent.width
-        pos_hint: {"x": 0.17, "y": 0.91}   # 0.13 → 0.17
+        pos_hint: {"x": 0.17, "y": 0.91}
         spacing: 5.3
         valign: "left"
 
         Label:
             text: "Result"
-            color: (5/255, 71/255, 5/255, 1)
-            font_size: 32     # 24 / 0.75
+            color: 3/255, 30/255, 0/255, 1
+            font_size: 32
             bold: True
             valign: "middle"
             halign: "left"
             text_size: self.size
 
-    # --- BACK BUTTON ---
+    # Back Button
     RoundedButton:
         id: back_button
         size_hint: None, None
-        size: 100, 36         # 75×29 scaled up
+        size: 100, 36
         pos_hint: {"x": 0.79, "y": 0.915}
         on_release: root.go_back()
 
@@ -68,10 +70,11 @@
                 size_hint: None, None
                 size: 20, 20
                 pos_hint: {"center_y": 0.5}
+                mipmap: True
 
             Label:
                 text: "Back"
-                color: (0/255, 121/255, 0/255, 1)
+                color: 3/255, 30/255, 0/255, 1
                 font_size: 16
                 bold: True
                 size_hint_x: None
@@ -80,53 +83,75 @@
                 valign: "middle"
                 pos_hint: {"center_y": 0.5}
 
-    # --- IMAGE CONTAINER ---
+    # Image Dispaly Area
     FloatLayout:
         size_hint: 0.88, None
-        height: 300          # 240 / 0.8
+        height: 300
         pos_hint: {"center_x": 0.5, "center_y": 0.70}
 
         # Shadow
         canvas.before:
             Color:
-                rgba: (0, 0, 0, 0.15)
+                rgba: 0, 0, 0, 0.15
             RoundedRectangle:
-                pos: self.x + 2.6, self.y - 3.1     # 2 / 0.75, 2.5 / 0.8
+                pos: self.x + 2.6, self.y - 3.1
                 size: self.size
                 radius: [15, 15, 15, 15]
 
         # Background
         canvas:
             Color:
-                rgba: (0.93, 0.95, 0.93, 1)
+                rgba: 0.93, 0.95, 0.93, 1
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
                 radius: [15, 15, 15, 15]
 
-    # --- RESULT DETAILS SECTION ---
+    # Result Details Section
     FloatLayout:
         size_hint: 0.88, None
-        height: 380          # 304 / 0.8
+        height: 380
         pos_hint: {"center_x": 0.5, "center_y": 0.18}
 
+        # Healthy Percentage
         Label:
             text: "100%"
             color: (38/255, 164/255, 33/255, 1)
-            font_size: 64      # 48 / 0.75
+            font_size: 64
             bold: True
             size_hint: None, None
             size: self.texture_size
             pos_hint: {"x": 0.0, "y": 0.90}
 
+        # Moderate Percentage
+        # Label:
+        #     text: "67%"
+        #     color: 207/255, 191/255, 44/255, 1
+        #     font_size: 64
+        #     bold: True
+        #     size_hint: None, None
+        #     size: self.texture_size
+        #     pos_hint: {"x": 0.0, "y": 0.90}   
+
+        # Anthracnose Percentage
+        # Label:
+        #     text: "15%"
+        #     color: 221/255, 45/255, 29/255, 1
+        #     font_size: 64
+        #     bold: True
+        #     size_hint: None, None
+        #     size: self.texture_size
+        #     pos_hint: {"x": 0.0, "y": 0.90}
+
         BoxLayout:
             size_hint: None, None
-            size: 140, 30      # 105×24 scaled up
+            size: 140, 30
             pos_hint: {"right": 1.0, "y": 0.96}
 
+            # Healthy Tag
             canvas.before:
                 Color:
-                    rgba: (201/255, 255/255, 142/255, 1)
+                    rgba: 201/255, 255/255, 142/255, 1
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
@@ -134,16 +159,52 @@
 
             Label:
                 text: "HEALTHY"
-                color: (0/255, 82/255, 0/255, 1)
+                color: 0/255, 82/255, 0/255, 1
                 font_size: 16
                 bold: True
                 valign: "middle"
                 halign: "center"
                 text_size: self.size
 
+            # Moderate Tag
+            # canvas.before:
+            #     Color:
+            #         rgba: 255/255, 246/255, 149/255, 1
+            #     RoundedRectangle:
+            #         pos: self.pos
+            #         size: self.size
+            #         radius: [8]
+
+            # Label:
+            #     text: "Moderate"
+            #     color: 99/255, 91/255, 1/255, 1
+            #     font_size: 16
+            #     bold: True
+            #     valign: "middle"
+            #     halign: "center"
+            #     text_size: self.size
+            
+            # Anthracnose Tag
+            # canvas.before:
+            #     Color:
+            #         rgba: 255/255, 180/255, 168/255, 1
+            #     RoundedRectangle:
+            #         pos: self.pos
+            #         size: self.size
+            #         radius: [8]
+
+            # Label:
+            #     text: "ANTHRACNOSE"
+            #     color: 150/255, 22/255, 3/255, 1
+            #     font_size: 16
+            #     bold: True
+            #     valign: "middle"
+            #     halign: "center"
+            #     text_size: self.size
+
         Label:
             text: "SEVERITY LEVEL"
-            color: (100/255, 100/255, 100/255, 1)
+            color: 100/255, 100/255, 100/255, 1
             font_size: 12
             bold: True
             size_hint: None, None
@@ -152,7 +213,7 @@
 
         Label:
             text: "Leaf Data"
-            color: (0, 0, 0, 1)
+            color: 0, 0, 0, 1
             font_size: 18
             bold: True
             size_hint: None, None
@@ -162,19 +223,19 @@
         Label:
             text: 
                 "This image shows a 100% healthy mango leaf, free from anthracnose and any other diseases. The leaf displays a vibrant green color, smooth surface, and uniform texture—representing the ideal standard for a healthy, disease-free mango leaf."
-            color: (0, 0, 0, 1)
+            color: 0, 0, 0, 1
             font_size: 18
             text_size: self.width, None
             halign: "left"
             valign: "top"
-            width: 425      # 318 / 0.75
+            width: 425
             size_hint: None, None
             height: self.texture_size[1]
             pos_hint: {"x": 0.0, "y": 0.45}
 
         Label:
             text: "Disease Classification"
-            color: (0, 0, 0, 1)
+            color: 0, 0, 0, 1
             font_size: 18
             bold: True
             size_hint: None, None
@@ -183,7 +244,7 @@
 
         Label:
             text: "Healthy"
-            color: (0, 0, 0, 1)
+            color: 0, 0, 0, 1
             font_size: 18
             size_hint: None, None
             size: self.texture_size
@@ -191,7 +252,7 @@
 
         Label:
             text: "Date Scanned"
-            color: (0, 0, 0, 1)
+            color: 0, 0, 0, 1
             font_size: 18
             bold: True
             size_hint: None, None
@@ -200,7 +261,7 @@
 
         Label:
             text: "December 1, 2025"
-            color: (0, 0, 0, 1)
+            color: 0, 0, 0, 1
             font_size: 18
             size_hint: None, None
             size: self.texture_size
