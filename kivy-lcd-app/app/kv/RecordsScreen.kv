@@ -1,5 +1,6 @@
 #:kivy 2.0.0
 
+# Record Item Layout
 <RecordTreeItem>:
     orientation: "horizontal"
     size_hint_y: None
@@ -19,6 +20,8 @@
             rounded_rectangle: (self.x, self.y, self.width, self.height, 11)
             width: 1
 
+
+# Records Screen Layout
 <RecordsScreen>
     canvas.before:
         Color:
@@ -27,7 +30,7 @@
             pos: self.pos
             size: self.size
 
-    # --- HEADER SECTION ---
+    # Header Section
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
@@ -42,7 +45,7 @@
             size: 35, 35
             allow_stretch: True
             keep_ratio: True
-            color: (6/255, 87/255, 6/255, 1)
+            mipmap: True
 
     BoxLayout:
         orientation: "horizontal"
@@ -54,14 +57,14 @@
 
         Label:
             text: "Records"
-            color: (5/255, 71/255, 5/255, 1)
+            color: 3/255, 30/255, 0/255, 1
             font_size: 32
             bold: True
             valign: "middle"
             halign: "left"
             text_size: self.size
 
-    # --- BACK BUTTON ---
+    # Back Button
     RoundedButton:
         id: back_button
         size_hint: None, None
@@ -85,10 +88,11 @@
                 size_hint: None, None
                 size: 20, 20
                 pos_hint: {"center_y": 0.5}
+                mipmap: True
 
             Label:
                 text: "Back"
-                color: (0/255, 121/255, 0/255, 1)
+                color: 3/255, 30/255, 0/255, 1
                 font_size: 16
                 bold: True
                 size_hint_x: None
@@ -97,7 +101,7 @@
                 valign: "middle"
                 pos_hint: {"center_y": 0.5}
 
-    # === SEARCH BOX ===
+    # Search Box
     BoxLayout:
         size_hint: None, None
         size: 400, 35
@@ -139,7 +143,7 @@
             keep_ratio: True
             pos_hint: {"center_y": 0.5}
 
-    # === ACTION BUTTONS (Edit and Delete) ===
+    # Action Buttons (Edit and Delete)
     BoxLayout:
         id: action_buttons
         orientation: "horizontal"
@@ -160,13 +164,13 @@
 
             canvas.before:
                 Color:
-                    rgba: 240/255, 248/255, 255/255, 1  # Light blue background
+                    rgba: 240/255, 248/255, 255/255, 1
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
                     radius: [8]
                 Color:
-                    rgba: 100/255, 149/255, 237/255, 0.3  # Blue border
+                    rgba: 100/255, 149/255, 237/255, 0.3
                 Line:
                     rounded_rectangle: (self.x, self.y, self.width, self.height, 8)
                     width: 1.5
@@ -188,10 +192,11 @@
                         pos_hint: {"x": 0.05, "center_y": 0.5}
                         allow_stretch: True
                         keep_ratio: True
+                        mipmap: True
 
                     Label:
                         text: "Edit"
-                        color: 30/255, 100/255, 180/255, 1  # Blue text
+                        color: 30/255, 100/255, 180/255, 1
                         font_size: 14
                         bold: True
                         pos_hint: {"right": 0.95, "center_y": 0.5}
@@ -208,13 +213,13 @@
 
             canvas.before:
                 Color:
-                    rgba: 255/255, 240/255, 240/255, 1  # Light red background
+                    rgba: 255/255, 240/255, 240/255, 1
                 RoundedRectangle:
                     pos: self.pos
                     size: self.size
                     radius: [8]
                 Color:
-                    rgba: 220/255, 53/255, 69/255, 0.4  # Red border
+                    rgba: 220/255, 53/255, 69/255, 0.4
                 Line:
                     rounded_rectangle: (self.x, self.y, self.width, self.height, 8)
                     width: 1.5
@@ -236,6 +241,7 @@
                         pos_hint: {"x": 0.05, "center_y": 0.5}
                         allow_stretch: True
                         keep_ratio: True
+                        mipmap: True
 
                     Label:
                         text: "Delete"
@@ -246,13 +252,13 @@
                         size_hint: None, None
                         size: self.texture_size
 
-    # === MAIN CONTENT AREA ===
+    # Main Content Area
     FloatLayout:
         size_hint: None, None
         size: 400, 460
         pos_hint: {"center_x": 0.5, "y": 0.12}
 
-        # === SCROLLABLE TREE LIST ===
+        # Scrollable Tree List
         ScrollView:
             id: scroll_view
             size_hint: None, None
@@ -274,7 +280,7 @@
                 height: self.minimum_height
                 padding: [28, 12, 28, 20]
 
-        # === ADD NEW TREE BAR ===
+        # Add New Tree Bar
         BoxLayout:
             size_hint: None, None
             size: 343, 49

@@ -5,10 +5,10 @@ from kivy.core.window import Window
 from kivy.properties import NumericProperty
 import os
 
-# 🧩 Core imports
+# Core imports
 from app.core import setup_window, BASE_WIDTH, BASE_HEIGHT
 
-# 🧩 Screen imports
+# Screen imports
 from app.screens import (
     WelcomeScreen, HomeScreen, ScanScreen, RecordsScreen,
     ShareScreen, HelpScreen, GuideScreen, ScanningScreen,
@@ -17,24 +17,24 @@ from app.screens import (
 )
 
 # =========================================
-# ✅ INITIAL SETUP
+# INITIAL SETUP
 # =========================================
 setup_window()
 
 
 # =========================================
-# ✅ APP CLASS
+# PP CLASS
 # =========================================
 class MangofyApp(App):
     scale_x = NumericProperty(1)
     scale_y = NumericProperty(1)
-    last_screen = None  # ✅ Track where 'result' was opened from
+    last_screen = None
 
     def build(self):
-        # ✅ Locate the KV directory inside the app folder
+        # Locate the KV directory inside the app folder
         kv_dir = os.path.join(os.path.dirname(__file__), 'app', 'kv')
 
-        # ✅ Load all KV files from /app/kv/
+        # Load all KV files from /app/kv/
         kv_files = [
             "WelcomeScreen.kv", "HomeScreen.kv", "ScanScreen.kv",
             "RecordsScreen.kv", "ShareScreen.kv", "HelpScreen.kv",
@@ -50,7 +50,7 @@ class MangofyApp(App):
             else:
                 print(f"[Warning] KV file not found: {kv_path}")
 
-        # ✅ Setup ScreenManager
+        # Setup ScreenManager
         sm = ScreenManager(transition=FadeTransition(duration=0.1))
         for scr, name in [
             (WelcomeScreen, 'welcome'), (HomeScreen, 'home'),
@@ -66,7 +66,7 @@ class MangofyApp(App):
 
         sm.current = 'welcome'
 
-        # ✅ Bind scaling
+        # Bind scaling
         Window.bind(on_resize=self._update_scaling)
         self._update_scaling(Window, Window.width, Window.height)
 

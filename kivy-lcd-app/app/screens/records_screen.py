@@ -134,7 +134,7 @@ class RecordsScreen(Screen):
         content_box.add_widget(label)
         box.label = label
 
-        # "View Records" button
+        # View Records Button
         view_button = Button(
             text="View Records",
             color=(56/255, 73/255, 38/255, 0.7),
@@ -186,7 +186,7 @@ class RecordsScreen(Screen):
         with card.canvas.before:
             from kivy.graphics import Color, RoundedRectangle, Line
             card.canvas.before.clear()
-            Color(183/255, 255/255, 138/255, 1)  # Same as SaveScreen
+            Color(255/255, 255/255, 255/255, 1)  # Same as SaveScreen
             card.bg_rect = RoundedRectangle(
                 pos=card.pos,
                 size=card.size,
@@ -214,7 +214,7 @@ class RecordsScreen(Screen):
         with card.canvas.before:
             from kivy.graphics import Color, RoundedRectangle, Line
             card.canvas.before.clear()
-            Color(232/255, 255/255, 208/255, 1)  # Original green
+            Color(255/255, 255/255, 255/255, 1)
             card.bg_rect = RoundedRectangle(
                 pos=card.pos,
                 size=card.size,
