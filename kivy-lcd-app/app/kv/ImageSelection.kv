@@ -1,6 +1,7 @@
 #:kivy 2.0.0
 
 <ImageSelection>
+    # Background Color
     canvas.before:
         Color:
             rgba: 248/255, 248/255, 248/255, 1
@@ -8,7 +9,7 @@
             pos: self.pos
             size: self.size
 
-    # --- HEADER SECTION ---
+    # Header Section
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
@@ -23,7 +24,8 @@
             size: 35, 35
             allow_stretch: True
             keep_ratio: True
-            color: (6/255, 87/255, 6/255, 1)
+            color: 6/255, 87/255, 6/255, 1
+            mipmap: True
 
     BoxLayout:
         orientation: "horizontal"
@@ -35,14 +37,14 @@
 
         Label:
             text: "Records"
-            color: (5/255, 71/255, 5/255, 1)
+            color: 3/255, 30/255, 0/255, 1
             font_size: 32
             bold: True
             valign: "middle"
             halign: "left"
             text_size: self.size
 
-    # --- BACK BUTTON ---
+    # Back Button
     RoundedButton:
         id: back_button
         size_hint: None, None
@@ -66,10 +68,11 @@
                 size_hint: None, None
                 size: 20, 20
                 pos_hint: {"center_y": 0.5}
+                mipmap: True
 
             Label:
                 text: "Back"
-                color: (0/255, 121/255, 0/255, 1)
+                color: 3/255, 30/255, 0/255, 1
                 font_size: 16
                 bold: True
                 size_hint_x: None
@@ -79,19 +82,19 @@
                 pos_hint: {"center_y": 0.5}
 
 
-    # --- IMAGE GALLERY SECTION ---
+    # Image Gallery Section
     ScrollView:
         size_hint: (1, None)
-        height: root.height * 0.82  # Use a bit more height to bring images up
-        pos_hint: {"x": 0, "y": 0.04}  # Slightly higher starting position
+        height: root.height * 0.82
+        pos_hint: {"x": 0, "y": 0.04}
         bar_width: 8
         do_scroll_x: False
 
         GridLayout:
             id: image_grid
             cols: 3
-            spacing: [2, 2]  # Reduced space between columns and rows
-            padding: [0, 0, 0, 0]  # No side margins
+            spacing: [2, 2]
+            padding: [0, 0, 0, 0]
             size_hint_y: None
             height: self.minimum_height
 
@@ -181,13 +184,13 @@
                 size_hint: None, None
                 size: 156, 133
 
-    # --- FILTER BAR SECTION ---
+    # Filter Bar Sectiom
     FloatLayout:
         size_hint: None, None
         size: 418, 36
         pos_hint: {"center_x": 0.5, "y": 0.15}
 
-        # Gray highlight background (animated)
+        # Gray highlight background
         canvas.before:
             Color:
                 rgba: 1, 1, 1, 0.75

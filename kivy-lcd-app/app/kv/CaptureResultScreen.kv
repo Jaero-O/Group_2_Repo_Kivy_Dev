@@ -1,20 +1,22 @@
 #:kivy 2.0.0
 
 <CaptureResultScreen>:
+    # Background image
     canvas.before:
         Rectangle:
             source: "app/assets/placeholder_bg1.png"
             pos: self.pos
             size: self.size
 
-    # === RESULT BUTTON ===
+    # Result Button
     RoundedButton:
         id: result_button
         size_hint: None, None
-        size: 60, 60
+        size: 70, 70
         pos_hint: {"center_x": 0.20, "y": 0.07}
         on_release: app.last_screen = 'capture_result'; app.root.current = 'result'
 
+        # Shadow, base color, and touch feedback
         canvas.before:
             Color:
                 rgba: self.shadow_color
@@ -28,7 +30,14 @@
                 pos: self.pos
                 size: self.size
                 radius: [18, 18, 18, 18]
+            Color:
+                rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0  # Touch feedback
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [18, 18, 18, 18]
 
+        # Layout containing icon and label
         RelativeLayout:
             size: result_button.size
             pos: result_button.pos
@@ -43,9 +52,10 @@
                     keep_ratio: True
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
+                    mipmap: True
                 Label:
                     text: "Result"
-                    color: 0/255., 114/255., 0/255., 1
+                    color: 3/255, 30/255, 0/255, 1
                     font_size: 13
                     bold: True
                     size_hint_y: 0.35
@@ -53,14 +63,15 @@
                     valign: "middle"
                     text_size: self.size
 
-    # === RETAKE BUTTON ===
+    # Retake Button
     GradientScanButton:
         id: retake_button
         size_hint: None, None
-        size: 100, 100
+        size: 110, 110
         pos_hint: {"center_x": 0.5, "y": 0.04}
         on_release: app.root.current = 'scan'
 
+        # Shadow, gradient, and touch feedback
         canvas.before:
             Color:
                 rgba: self.shadow_color
@@ -75,7 +86,14 @@
                 pos: self.pos
                 size: self.size
                 radius: [25, 25, 25, 25]
+            Color:
+                rgba: 0.2, 0.2, 0.2, 0.3 if self.state == 'down' else 0  # Touch feedback
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [25, 25, 25, 25]
 
+        # Layout containing scan icon and label
         RelativeLayout:
             size: retake_button.size
             pos: retake_button.pos
@@ -90,24 +108,26 @@
                     keep_ratio: True
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
+                    mipmap: True
                 Label:
                     text: "Retake"
                     color: 1, 1, 1, 1
-                    font_size: 16
+                    font_size: 17
                     bold: True
                     size_hint_y: 0.35
                     halign: "center"
                     valign: "middle"
                     text_size: self.size
 
-    # === SAVE BUTTON ===
+    # Save Button
     RoundedButton:
         id: save_button
         size_hint: None, None
-        size: 60, 60
+        size: 70, 70
         pos_hint: {"center_x": 0.80, "y": 0.07}
         on_release: app.root.current = 'save'
 
+        # Shadow, base color, and touch feedback
         canvas.before:
             Color:
                 rgba: self.shadow_color
@@ -121,7 +141,14 @@
                 pos: self.pos
                 size: self.size
                 radius: [18, 18, 18, 18]
+            Color:
+                rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0  # Touch feedback
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [18, 18, 18, 18]
 
+        # Layout containing icon and label
         RelativeLayout:
             size: save_button.size
             pos: save_button.pos
@@ -136,9 +163,10 @@
                     keep_ratio: True
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
+                    mipmap: True
                 Label:
                     text: "Save"
-                    color: 0/255., 114/255., 0/255., 1
+                    color: 3/255, 30/255, 0/255, 1
                     font_size: 13
                     bold: True
                     size_hint_y: 0.35

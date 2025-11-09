@@ -1,20 +1,22 @@
 #:kivy 2.0.0
 
 <ScanScreen>:
+    # Background image for the scan screen
     canvas.before:
         Rectangle:
             source: "app/assets/placeholder_bg1.png"
             pos: self.pos
             size: self.size
 
-    # === CANCEL BUTTON ===
+    # Cancel Button
     RoundedButton:
         id: cancel_button
         size_hint: None, None
-        size: 60, 60
+        size: 70, 70
         pos_hint: {"center_x": 0.20, "y": 0.07}
-        on_release: app.root.current = 'home'
+        on_release: app.root.current = 'home'  # Navigate back to Home screen
 
+        # Button shadow, base color, and touch feedback
         canvas.before:
             Color:
                 rgba: self.shadow_color
@@ -28,7 +30,14 @@
                 pos: self.pos
                 size: self.size
                 radius: [18, 18, 18, 18]
+            Color:
+                rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0  # Touch feedback overlay
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [18, 18, 18, 18]
 
+        # Layout containing icon and label
         RelativeLayout:
             size: cancel_button.size
             pos: cancel_button.pos
@@ -43,9 +52,10 @@
                     keep_ratio: True
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
+                    mipmap: True
                 Label:
                     text: "Cancel"
-                    color: 0/255., 114/255., 0/255., 1
+                    color: 3/255, 30/255, 0/255, 1  # Dark greenish
                     font_size: 13
                     bold: True
                     size_hint_y: 0.35
@@ -53,14 +63,15 @@
                     valign: "middle"
                     text_size: self.size
 
-    # === SCAN BUTTON ===
+    # Scan Button
     GradientScanButton:
         id: scan_button
         size_hint: None, None
-        size: 100, 100
+        size: 110, 110
         pos_hint: {"center_x": 0.50, "y": 0.04}
-        on_release: app.root.current = 'scanning'
+        on_release: app.root.current = 'scanning'  # Navigate to scanning screen
 
+        # Button shadow, gradient texture, and touch feedback
         canvas.before:
             Color:
                 rgba: self.shadow_color
@@ -75,7 +86,14 @@
                 pos: self.pos
                 size: self.size
                 radius: [25, 25, 25, 25]
+            Color:
+                rgba: 0.2, 0.2, 0.2, 0.3 if self.state == 'down' else 0  # Touch feedback overlay
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [25, 25, 25, 25]
 
+        # Layout containing scan icon and label
         RelativeLayout:
             size: scan_button.size
             pos: scan_button.pos
@@ -90,24 +108,26 @@
                     keep_ratio: True
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
+                    mipmap: True
                 Label:
                     text: "Scan"
                     color: 1, 1, 1, 1
-                    font_size: 16
+                    font_size: 18
                     bold: True
                     size_hint_y: 0.35
                     halign: "center"
                     valign: "middle"
                     text_size: self.size
 
-    # === GUIDE BUTTON ===
+    # Guide Button
     RoundedButton:
         id: guide_button
         size_hint: None, None
-        size: 60, 60
+        size: 70, 70
         pos_hint: {"center_x": 0.80, "y": 0.07}
-        on_release: app.root.current = 'guide'
+        on_release: app.root.current = 'guide'  # Navigate to guide screen
 
+        # Button shadow, base color, and touch feedback
         canvas.before:
             Color:
                 rgba: self.shadow_color
@@ -121,7 +141,14 @@
                 pos: self.pos
                 size: self.size
                 radius: [18, 18, 18, 18]
+            Color:
+                rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0  # Touch feedback overlay
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [18, 18, 18, 18]
 
+        # Layout containing guide icon and label
         RelativeLayout:
             size: guide_button.size
             pos: guide_button.pos
@@ -136,9 +163,10 @@
                     keep_ratio: True
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
+                    mipmap: True
                 Label:
                     text: "Guide"
-                    color: 0/255., 114/255., 0/255., 1
+                    color: 3/255, 30/255, 0/255, 1
                     font_size: 13
                     bold: True
                     size_hint_y: 0.35
