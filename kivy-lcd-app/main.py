@@ -5,6 +5,13 @@ from kivy.core.window import Window
 from kivy.properties import NumericProperty
 import os
 
+# ================================
+# ✅ FULLSCREEN PORTRAIT SETTINGS
+# ================================
+Window.fullscreen = 'auto'   # Fullscreen
+Window.show_cursor = False    # Hide mouse cursor
+Window.rotation = 270           # Portrait orientation
+
 # 🧩 Core imports
 from app.core import setup_window, BASE_WIDTH, BASE_HEIGHT
 
@@ -79,3 +86,4 @@ class MangofyApp(App):
 
 if __name__ == '__main__':
     MangofyApp().run()
+
