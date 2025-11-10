@@ -118,6 +118,26 @@ class RecordsScreen(Screen):
         # Create card
         box = RecordTreeItem(tree_name=name)
         
+        # Set up initial canvas with border
+        from kivy.graphics import Color, RoundedRectangle, Line
+        with box.canvas.before:
+            box.bg_color = Color(255/255, 255/255, 255/255, 1)
+            box.bg_rect = RoundedRectangle(
+                pos=box.pos,
+                size=box.size,
+                radius=[11]
+            )
+            box.border_color = Color(0, 0, 0, 0.1)
+            box.border = Line(
+                rounded_rectangle=(box.x, box.y, box.width, box.height, 11),
+                width=1
+            )
+        
+        box.bind(
+            pos=lambda w, v: self.update_card_graphics(w),
+            size=lambda w, v: self.update_card_graphics(w)
+        )
+        
         # Main content container
         content_box = BoxLayout(orientation='horizontal', spacing=10)
         
@@ -137,7 +157,7 @@ class RecordsScreen(Screen):
         # View Records Button
         view_button = Button(
             text="View Records",
-            color=(56/255, 73/255, 38/255, 0.7),
+            color=(0/255, 152/255, 0/255, 1),
             font_size=14,
             italic=True,
             halign='right',
@@ -179,29 +199,12 @@ class RecordsScreen(Screen):
             self.active_card = card
 
     def select_card(self, card):
-        """Highlight card and show action buttons"""
+        """Highlight card with green border"""
         card.is_selected = True
         
-        # Change card background to match SaveScreen highlight color
-        with card.canvas.before:
-            from kivy.graphics import Color, RoundedRectangle, Line
-            card.canvas.before.clear()
-            Color(255/255, 255/255, 255/255, 1)  # Same as SaveScreen
-            card.bg_rect = RoundedRectangle(
-                pos=card.pos,
-                size=card.size,
-                radius=[11]
-            )
-            Color(0, 0, 0, 0.15)
-            card.border = Line(
-                rounded_rectangle=(card.x, card.y, card.width, card.height, 11),
-                width=1.5
-            )
-        
-        card.bind(
-            pos=lambda w, v: self.update_card_graphics(w),
-            size=lambda w, v: self.update_card_graphics(w)
-        )
+        # Change border to green with thicker width
+        card.border_color.rgba = (0/255, 152/255, 0/255, 1)
+        card.border.width = 2
         
         # Show action buttons
         self.show_action_buttons()
@@ -210,21 +213,9 @@ class RecordsScreen(Screen):
         """Remove highlight from card"""
         card.is_selected = False
         
-        # Reset card background to original color
-        with card.canvas.before:
-            from kivy.graphics import Color, RoundedRectangle, Line
-            card.canvas.before.clear()
-            Color(255/255, 255/255, 255/255, 1)
-            card.bg_rect = RoundedRectangle(
-                pos=card.pos,
-                size=card.size,
-                radius=[11]
-            )
-            Color(0, 0, 0, 0.1)
-            card.border = Line(
-                rounded_rectangle=(card.x, card.y, card.width, card.height, 11),
-                width=1
-            )
+        # Reset border to default gray with normal width
+        card.border_color.rgba = (0, 0, 0, 0.1)
+        card.border.width = 1
 
     def update_card_graphics(self, card):
         """Update card graphics when position or size changes"""

@@ -33,6 +33,14 @@ class SaveScreen(Screen):
             self.add_tree_item(name)
 
     def add_tree_item(self, name):
+        # Create a container with padding for the border
+        container = BoxLayout(
+            orientation='horizontal',
+            size_hint_y=None,
+            height=42,  # Increased from 38 to accommodate top/bottom padding
+            padding=[3, 2, 3, 2]  # Add padding on all sides for border visibility
+        )
+        
         box = TreeItem(
             orientation='horizontal',
             size_hint_y=None,
@@ -45,7 +53,7 @@ class SaveScreen(Screen):
         with box.canvas.before:
             box.bg_color = Color(255 / 255, 255 / 255, 255 / 255, 1)
             box.bg_rect = RoundedRectangle(radius=[10], pos=box.pos, size=box.size)
-            Color(0, 0, 0, 0.08)
+            box.border_color = Color(0, 0, 0, 0.08)
             box.border_line = Line(
                 rounded_rectangle=(box.x, box.y, box.width, box.height, 10),
                 width=1
@@ -73,20 +81,27 @@ class SaveScreen(Screen):
         label.bind(size=lambda l, _: setattr(l, 'text_size', (l.width, None)))
         box.add_widget(label)
         box.tree_name = name
-        self.ids.tree_list.add_widget(box)
+        
+        # Add box to container, then container to tree_list
+        container.add_widget(box)
+        self.ids.tree_list.add_widget(container)
 
         # Fade-in animation
-        box.opacity = 0
-        Animation(opacity=1, duration=0.3).start(box)
+        container.opacity = 0
+        Animation(opacity=1, duration=0.3).start(container)
 
     def select_tree(self, box, name):
-        # Reset colors of all items
-        for child in self.ids.tree_list.children:
-            if hasattr(child, "bg_color"):
-                child.bg_color.rgba = (255 / 255, 255 / 255, 255 / 255, 1)
+        # Reset colors of all items (accounting for container wrapper)
+        for container in self.ids.tree_list.children:
+            if hasattr(container, 'children') and len(container.children) > 0:
+                child = container.children[0]
+                if hasattr(child, "border_color"):
+                    child.border_color.rgba = (0, 0, 0, 0.08)
+                    child.border_line.width = 1
 
-        # Highlight selected
-        box.bg_color.rgba = (183 / 255, 255 / 255, 138 / 255, 1)
+        # Highlight selected with green border
+        box.border_color.rgba = (0 / 255, 152 / 255, 0 / 255, 1)
+        box.border_line.width = 2
         self.selected_tree = name
 
     def on_add_tree(self):
@@ -152,14 +167,14 @@ class SaveScreen(Screen):
         )
         
         # Create modal with dynamic height
-        modal_height = 170 if show_buttons else 140
+        modal_height = 170 if show_buttons else 120
         
         modal = BoxLayout(
             orientation='vertical',
             size_hint=(None, None),
             size=(300, modal_height),
             pos_hint={"center_x": 0.5, "center_y": 0.5},
-            padding=[18, 18, 18, 16],
+            padding=[18, 18, 18, 18],
             spacing=12
         )
 
@@ -197,8 +212,12 @@ class SaveScreen(Screen):
                 halign="center",
                 valign="middle"
             )
-            title_label.bind(size=lambda l, _: setattr(l, 'text_size', (l.width, None)))
+            title_label.bind(size=lambda l, _: setattr(l, 'text_size', l.size))
             modal.add_widget(title_label)
+        
+        # Add spacer for non-button modals to center the message
+        if not show_buttons:
+            modal.add_widget(BoxLayout(size_hint_y=0.3))
         
         # Message label
         message_label = Label(
@@ -207,12 +226,16 @@ class SaveScreen(Screen):
             font_size=15,
             bold=True,
             size_hint_y=None,
-            height=46 if show_buttons else 60,
+            height=40,
             halign="center",
             valign="middle"
         )
-        message_label.bind(size=lambda l, _: setattr(l, 'text_size', (l.width, None)))
+        message_label.bind(size=lambda l, _: setattr(l, 'text_size', l.size))
         modal.add_widget(message_label)
+        
+        # Add bottom spacer for non-button modals
+        if not show_buttons:
+            modal.add_widget(BoxLayout(size_hint_y=0.3))
         
         if show_buttons:
             # Buttons container
