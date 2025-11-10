@@ -23,7 +23,7 @@ setup_window()
 
 
 # =========================================
-# PP CLASS
+# APP CLASS
 # =========================================
 class MangofyApp(App):
     scale_x = NumericProperty(1)
