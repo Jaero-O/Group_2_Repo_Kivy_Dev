@@ -24,17 +24,8 @@ if IS_PI or not DEV_MODE:
 else:
     Window.size = (BASE_WIDTH, BASE_HEIGHT)
     Window.fullscreen = False
-    try:
-        import tkinter as tk
-        root = tk.Tk()
-        screen_width = root.winfo_screenwidth()
-        screen_height = root.winfo_screenheight()
-        root.destroy()
-        Window.left = int((screen_width - BASE_WIDTH) / 2)
-        Window.top = int((screen_height - BASE_HEIGHT) / 2)
-        print("🧩 Running in DEV mode (360x640), centered on screen.")
-    except Exception as e:
-        print("⚠️ Centering skipped:", e)
+    # Let the OS handle window placement. Centering with tkinter is inefficient.
+    print("🧩 Running in DEV mode (360x640).")
 
 
 def setup_window():

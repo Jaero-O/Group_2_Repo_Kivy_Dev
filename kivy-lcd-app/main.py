@@ -2,7 +2,9 @@ from kivy.app import App
 from kivy.lang import Builder
 from kivy.uix.screenmanager import ScreenManager, FadeTransition
 from kivy.core.window import Window
-from kivy.properties import NumericProperty
+from kivy.properties import NumericProperty, StringProperty, ObjectProperty
+from app.core import init_db
+import random
 import os
 
 # Core imports
@@ -11,8 +13,8 @@ from app.core import setup_window, BASE_WIDTH, BASE_HEIGHT
 # Screen imports
 from app.screens import (
     WelcomeScreen, HomeScreen, ScanScreen, RecordsScreen,
-    ShareScreen, HelpScreen, GuideScreen, ScanningScreen,
-    CaptureResultScreen, ResultScreen, SaveScreen, ImageSelection,
+    ShareScreen, HelpScreen, GuideScreen, ScanningScreen, ResultScreen,
+    CaptureResultScreen, SaveScreen, ImageSelectionScreen,
     AnthracnoseScreen, SystemSpecScreen, PrecautionScreen, AboutUsScreen
 )
 
@@ -20,6 +22,8 @@ from app.screens import (
 # INITIAL SETUP
 # =========================================
 setup_window()
+# Initialize the database on startup
+init_db()
 
 
 # =========================================
@@ -30,25 +34,20 @@ class MangofyApp(App):
     scale_y = NumericProperty(1)
     last_screen = None
 
+    # Properties to share data between screens
+    analysis_image_path = StringProperty(None)
+    analysis_result = ObjectProperty(None)
+
     def build(self):
         # Locate the KV directory inside the app folder
         kv_dir = os.path.join(os.path.dirname(__file__), 'app', 'kv')
 
-        # Load all KV files from /app/kv/
-        kv_files = [
-            "WelcomeScreen.kv", "HomeScreen.kv", "ScanScreen.kv",
-            "RecordsScreen.kv", "ShareScreen.kv", "HelpScreen.kv",
-            "GuideScreen.kv", "ScanningScreen.kv", "CaptureResultScreen.kv",
-            "ResultScreen.kv", "SaveScreen.kv", "ImageSelection.kv",
-            "AnthracnoseScreen.kv", "SystemSpecScreen.kv", "PrecautionScreen.kv",
-            "AboutUsScreen.kv"
-        ]
-        for kv in kv_files:
-            kv_path = os.path.join(kv_dir, kv)
-            if os.path.exists(kv_path):
-                Builder.load_file(kv_path)
-            else:
-                print(f"[Warning] KV file not found: {kv_path}")
+        # Dynamically load all KV files from the /app/kv/ directory
+        if os.path.isdir(kv_dir):
+            for filename in os.listdir(kv_dir):
+                if filename.endswith(".kv"):
+                    kv_path = os.path.join(kv_dir, filename)
+                    Builder.load_file(kv_path)
 
         # Setup ScreenManager
         sm = ScreenManager(transition=FadeTransition(duration=0.1))
@@ -57,8 +56,8 @@ class MangofyApp(App):
             (ScanScreen, 'scan'), (RecordsScreen, 'records'),
             (ShareScreen, 'share'), (HelpScreen, 'help'),
             (GuideScreen, 'guide'), (ScanningScreen, 'scanning'),
-            (CaptureResultScreen, 'capture_result'), (ResultScreen, 'result'),
-            (SaveScreen, 'save'), (ImageSelection, 'image_select'),
+            (CaptureResultScreen, 'capture_result'), (ResultScreen, 'result'), (SaveScreen, 'save'), 
+            (ImageSelectionScreen, 'image_selection'),
             (AnthracnoseScreen, 'anthracnose'), (SystemSpecScreen, 'system_spec'),
             (PrecautionScreen, 'precaution'), (AboutUsScreen, 'about_us')
         ]:
@@ -79,4 +78,3 @@ class MangofyApp(App):
 
 if __name__ == '__main__':
     MangofyApp().run()
-
