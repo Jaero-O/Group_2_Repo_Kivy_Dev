@@ -1,6 +1,7 @@
 #:kivy 2.0.0
 
 # Record Item Layout
+# Note: The label inside RecordTreeItem is created in Python, not here.
 <RecordTreeItem>:
     orientation: "horizontal"
     size_hint_y: None
@@ -279,7 +280,7 @@
                 size_hint_y: None
                 height: self.minimum_height
                 padding: [28, 12, 28, 20]
-
+            
         # Add New Tree Bar
         BoxLayout:
             size_hint: None, None
@@ -315,7 +316,7 @@
                 multiline: False
                 cursor_color: 79/255, 79/255, 79/255, 1
                 on_text_validate: root.on_add_tree()
-
+ 
             Button:
                 text: "+"
                 size_hint: None, 1
