@@ -100,5 +100,3 @@ The application relies on the following Python libraries:
 *   **NumPy:** For numerical operations, often used with image processing.
 *   **Pillow:** For image manipulation.
 *   **TensorFlow:** For running the machine learning model for disease prediction.
-
----
