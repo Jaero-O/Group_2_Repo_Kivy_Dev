@@ -1,0 +1,17 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*c.pyo
+*o.py
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+populated_mangofy.db
+mangofy.db
