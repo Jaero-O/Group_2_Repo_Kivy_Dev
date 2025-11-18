@@ -15,3 +15,9 @@ ENV/
 *.db-wal
 populated_mangofy.db
 mangofy.db
+# Large ML artifacts and generated files
+ml/**/h5/
+ml/**/tflite/
+ml/leaf-detection/scripts/
+logs/
+data/leaf_features_complete.csv
