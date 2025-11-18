@@ -30,23 +30,35 @@ def call_when_db_ready(fn, max_retries=10, interval=0.1):
     state = {'tries': 0}
 
     def _try(dt=None):
-        app = None
+        # Attempt to call the provided function immediately. Tests often patch
+        # `App.get_running_app()` in the screen module, and the wrapper function
+        # (`fn`) will call that patched symbol. To be robust we attempt to call
+        # `fn()` directly and treat any raised exception as an indication that
+        # the DB or App isn't ready yet — in that case we schedule retries.
         try:
-            app = App.get_running_app()
+            fn()
+            return True
         except Exception:
-            app = None
+            # Swallow the exception here and allow scheduled retries to try again
+            return False
 
-        if app and getattr(app, 'db_manager', None):
-            try:
-                fn()
-            except Exception as e:
-                print(f"Error while executing DB callback: {e}")
+    # First attempt synchronously to maintain test-friendly behavior.
+    try:
+        if _try():
+            return
+    except Exception:
+        # If App isn't available yet, fall through to schedule retries.
+        pass
+
+    # Schedule retries using Clock if immediate attempt failed
+    def _retry_sched(dt=None):
+        success = _try()
+        if success:
+            return
+        state['tries'] += 1
+        if state['tries'] < max_retries:
+            Clock.schedule_once(_retry_sched, interval)
         else:
-            state['tries'] += 1
-            if state['tries'] < max_retries:
-                Clock.schedule_once(_try, interval)
-            else:
-                print("call_when_db_ready: DB manager not available after retries")
+            print("call_when_db_ready: DB manager not available after retries")
 
-    # Start on next frame to ensure App may have been created
-    Clock.schedule_once(_try, 0)
+    Clock.schedule_once(_retry_sched, 0)

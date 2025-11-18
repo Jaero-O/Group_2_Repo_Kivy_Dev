@@ -1,0 +1,156 @@
+#:kivy 2.0.0
+
+<TouchableButton@ButtonBehavior+BoxLayout>:
+    screen_name: ''  # Screen to navigate to on tap
+    icon_source: ''  # Icon image for the button
+    button_text: ''  # Label text for the button
+    orientation: "vertical"
+    size_hint_x: 0.333
+    spacing: 2
+    padding: [10, 0, 10, 0]
+    
+    # Navigate to the assigned screen when tapped
+    on_release: app.root.current = self.screen_name
+    
+    # Button background effect when pressed
+    canvas.before:
+        Color:
+            rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0
+        RoundedRectangle:
+            pos: self.x + 5, self.y + 5
+            size: self.width - 10, self.height - 10
+            radius: [15, 15, 15, 15]
+    
+    # Icon displayed on the button
+    Image:
+        source: root.icon_source
+        size_hint: None, None
+        size: '40dp', '40dp'
+        fit_mode: 'contain'
+        pos_hint: {"center_x": 0.5, "top": 1}
+        mipmap: True
+    
+    # Label displayed below the icon
+    Label:
+        text: root.button_text
+        color: 3/255, 30/255, 0/255, 1  # Dark greenish color
+        font_size: 16
+        bold: True
+        size_hint_y: None
+        height: 25
+        halign: "center"
+        valign: "middle"
+        text_size: self.size
+
+<HomeScreen>:
+    # Main Background
+    canvas.before:
+        Color:
+            rgba: 255/255, 255/255, 255/255, 1  # Pure white
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+        # Rounded Inner Panel
+        Color:
+            rgba: 237/255, 255/255, 218/255, 1  # Light greenish panel
+        RoundedRectangle:
+            id: inner_panel
+            pos: self.x + 20, self.height - (self.height * 0.7 + 20)
+            size: self.width - 40, self.height * 0.7
+            radius: [35, 35, 35, 35]
+
+        # Border for Inner Panel
+        Color:
+            rgba: 0, 0, 0, 0.10  # Semi-transparent black border
+        Line:
+            rounded_rectangle: (self.x + 20, self.height - (self.height * 0.7 + 20), self.width - 40, self.height * 0.7, 35)
+            width: 1.2
+
+    # Logo inside the inner panel
+    Image:
+        source: "src/app/assets/logo.png"
+        fit_mode: 'contain'
+        size_hint: None, None
+        size: '300dp', '300dp'
+        pos_hint: {"center_x": 0.5, "center_y": 0.62}
+
+    # Custom Rounded Scan Button
+    ScanButton:
+        id: scan_btn_container
+        size_hint: None, None
+        size: 100, 100
+        pos_hint: {"center_x": 0.5, "y": 0.20}
+        on_release: app.root.current = 'scan'
+
+        # Button shadow and color
+        canvas.before:
+            Color:
+                rgba: self.shadow_color
+            RoundedRectangle:
+                pos: self.x + self.shadow_offset_x, self.y - self.shadow_offset_y
+                size: self.size
+                radius: [25, 25, 25, 25]
+
+            Color:
+                rgba: self.color
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [25, 25, 25, 25]
+
+        RelativeLayout:
+            size: scan_btn_container.size
+            pos: scan_btn_container.pos
+
+            BoxLayout:
+                orientation: "vertical"
+                size_hint: 1, 1
+                spacing: 2
+                padding: [0, 15, 0, 10]
+
+                # Scan icon inside the button
+                Image:
+                    source: "src/app/assets/scan.png"
+                    fit_mode: 'contain'
+                    size_hint_y: 0.65
+                    pos_hint: {'center_x': 0.5}
+                    mipmap: True
+
+                # Scan label inside the button
+                Label:
+                    text: "Scan"
+                    color: 3/255, 30/255, 0/255, 1
+                    font_size: 16
+                    bold: True
+                    size_hint_y: 0.35
+                    halign: 'center'
+                    valign: 'middle'
+                    text_size: self.size
+
+    # Bottom Buttons (Records, Share, Help)
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint_y: None
+        height: 110
+        pos_hint: {"y": 0.02}
+        spacing: 0
+        padding: [20, 0, 20, 10]
+
+        # Records Button
+        TouchableButton:
+            screen_name: 'records'
+            icon_source: "src/app/assets/records.png"
+            button_text: "Records"
+
+        # Share Button
+        TouchableButton:
+            screen_name: 'share'
+            icon_source: "src/app/assets/share.png"
+            button_text: "Share"
+
+        # Help Button
+        TouchableButton:
+            screen_name: 'help'
+            icon_source: "src/app/assets/help.png"
+            button_text: "Help"

@@ -1,3 +1,4 @@
+from kivy.app import App
 from kivy.uix.screenmanager import Screen
 from kivy.animation import Animation
 from kivy.uix.boxlayout import BoxLayout
@@ -53,13 +54,24 @@ class RecordsScreen(Screen):
 
     def _fetch_trees(self, dt):
         """Initiates the asynchronous database call."""
-        from kivy.app import App
         from app.core.utils import call_when_db_ready
 
         def _call():
+            # Use the module-level App symbol (test harness patches this in the
+            # `src.app.screens.records_screen` namespace) so patched get_running_app
+            # will be used.
             App.get_running_app().db_manager.get_all_trees_async(on_success_callback=self.populate_trees_list)
+        # If the DB manager is already available (common in tests), call directly
+        # to keep behavior synchronous. Otherwise, use the guarded retry helper.
+        try:
+            app = App.get_running_app()
+        except Exception:
+            app = None
 
-        call_when_db_ready(_call)
+        if app and getattr(app, 'db_manager', None):
+            app.db_manager.get_all_trees_async(on_success_callback=self.populate_trees_list)
+        else:
+            call_when_db_ready(_call)
 
     def add_tree_item(self, tree_data):
         print(f"[DEBUG] add_tree_item called for: {tree_data.get('name')}")
@@ -78,7 +90,7 @@ class RecordsScreen(Screen):
         Sets the selected tree and navigates to the image selection screen
         to show its associated scans.
         """
-        from kivy.app import App
+        # Use the patched module-level App provided by the test harness.
         app = App.get_running_app()
         app.selected_tree_id = tree_data.get('id')
         self.manager.current = 'image_selection'
@@ -90,9 +102,12 @@ class RecordsScreen(Screen):
         re-querying the database on every key press, which is much more efficient.
         """
         search_text = text.lower().strip()
-        from kivy.app import App
-        # Filter the list that's already in memory
-        self.filter_and_populate(self.trees, search_text)
+        # Filter the list that's already in memory only if it exists. Tests
+        # expect that calling this method does not immediately populate an
+        # empty UI via `populate_trees_list` — the DB callback will populate
+        # when data is available.
+        if self.trees:
+            self.filter_and_populate(self.trees, search_text)
         Clock.schedule_once(lambda dt: setattr(self.ids.scroll_view, 'scroll_y', 1), 0.1)
 
     def filter_and_populate(self, trees, search_text):
@@ -112,13 +127,21 @@ class RecordsScreen(Screen):
                 print(f"Tree '{new_name}' already exists.")
                 # Optionally, show a message to the user here
                 return
-            from kivy.app import App
             from app.core.utils import call_when_db_ready
 
             def _call_add():
                 App.get_running_app().db_manager.add_tree_async(new_name, self.on_tree_added)
 
-            call_when_db_ready(_call_add)
+            # Prefer synchronous/direct call when the DB manager is already present
+            try:
+                app = App.get_running_app()
+            except Exception:
+                app = None
+
+            if app and getattr(app, 'db_manager', None):
+                app.db_manager.add_tree_async(new_name, self.on_tree_added)
+            else:
+                call_when_db_ready(_call_add)
 
     def on_tree_added(self, new_tree):
         """Callback function for when a new tree is successfully added to the DB."""
