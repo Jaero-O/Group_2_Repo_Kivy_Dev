@@ -50,44 +50,52 @@ The backend is designed to be robust and self-contained, with a normalized datab
 
 ```mermaid
 erDiagram
-    Disease {
+    tbl_tree {
+        INTEGER id PK "Auto-incrementing primary key"
+        TEXT name UQ "Unique name of the tree (e.g., 'Backyard Mango')"
+        DATETIME created_at "Timestamp of creation"
+    }
+    tbl_disease {
         INTEGER id PK "Auto-incrementing primary key"
         TEXT name UQ "Unique name of the disease (e.g., 'Anthracnose')"
         TEXT description "Detailed description of the disease"
         TEXT symptoms "Common symptoms"
         TEXT prevention "Prevention and treatment methods"
     }
-    SeverityLevel {
+    tbl_severity_level {
         INTEGER id PK "Auto-incrementing primary key"
         TEXT name UQ "e.g., Healthy, Early Stage, Advanced Stage"
         TEXT description "Description of the severity stage"
     }
-    ScanRecord {
+    tbl_scan_record {
         INTEGER id PK "Auto-incrementing primary key"
-        INTEGER disease_id FK "Foreign key to Disease table"
-        INTEGER severity_level_id FK "Foreign key to SeverityLevel table"
+        INTEGER tree_id FK "Foreign key to tbl_tree"
+        INTEGER disease_id FK "Foreign key to tbl_disease"
+        INTEGER severity_level_id FK "Foreign key to tbl_severity_level"
         REAL severity_percentage "Calculated as (lesion_area / leaf_area)"
         TEXT image_path "File path to the saved scan image"
-        DATETIME timestamp "The date and time of the scan"
+        DATETIME scan_timestamp "The date and time of the scan"
+        INTEGER is_archived "0 for active, 1 for archived"
     }
 
-    ScanRecord ||--o{ Disease : "has"
-    ScanRecord ||--o{ SeverityLevel : "is at"
+    tbl_tree ||--|{ tbl_scan_record : "has"
+    tbl_scan_record }|--|| tbl_disease : "is"
+    tbl_scan_record }|--|| tbl_severity_level : "is at"
 ```
 
 ### Database Tables
 
-1.  **`Disease`** (Lookup Table)
+1.  **`tbl_disease`** (Lookup Table)
     *   Stores static, detailed information about each detectable condition.
     *   **Columns**: `id`, `name` (e.g., 'Anthracnose', 'Healthy'), `description`, `symptoms`, `prevention`.
 
-2.  **`SeverityLevel`** (Lookup Table)
+2.  **`tbl_severity_level`** (Lookup Table)
     *   Defines the different stages of infection that the model can classify.
     *   **Columns**: `id`, `name` (e.g., 'Early Stage', 'Advanced Stage'), `description`.
 
-3.  **`ScanRecord`** (Main Data Table)
+3.  **`tbl_scan_record`** (Main Data Table)
     *   Stores the results of every scan performed by the user.
-    *   **Columns**: `id`, `scan_timestamp`, `disease_id` (FK to `Disease`), `severity_level_id` (FK to `SeverityLevel`), `severity_percentage` (REAL), `image_path`, `is_archived`.
+    *   **Columns**: `id`, `scan_timestamp`, `tree_id` (FK), `disease_id` (FK), `severity_level_id` (FK), `severity_percentage` (REAL), `image_path`, `is_archived`.
 
 ## Data Flow: From Scan to Save
 

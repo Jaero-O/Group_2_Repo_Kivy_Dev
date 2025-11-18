@@ -9,46 +9,15 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Add the project root to the Python path to allow imports from 'app'
 # Assuming this script is run from the 'Group_2_Repo_Kivy_Dev' directory.
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), 'kivy-lcd-app'))
+project_root = os.path.abspath(os.path.dirname(__file__))
+src_path = os.path.join(project_root, 'src')
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
 
-# This is a mock App class to get the user_data_dir without running the full app
-class DummyApp(App):
-    def build(self):
-        # We need to schedule the stop event to allow the app context to initialize
-        Clock.schedule_once(self.stop, 0.1)
-        return None
-
-# Run and stop a dummy app to get the user_data_dir correctly
-dummy_app = DummyApp()
-dummy_app.run()
-
-from app.core.database import DatabaseManager
-
-# --- Synchronous Add-on for DatabaseManager ---
-# This is a helper to make scripting easier. We add a synchronous method
-# to the class instance for use only within this script.
-def add_tree_sync(self, tree_name: str) -> int:
-    """Synchronously adds a tree and returns its ID."""
-    try:
-        with self._create_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('INSERT INTO tbl_tree (name) VALUES (?)', (tree_name,))
-            conn.commit()
-            return cursor.lastrowid
-    except sqlite3.IntegrityError:
-        # If tree exists, find and return its ID
-        with self._create_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT id FROM tbl_tree WHERE name = ?", (tree_name,))
-            row = cursor.fetchone()
-            return row['id'] if row else None
-    except Exception as e:
-        print(f"Error in add_tree_sync: {e}")
-        return None
-
-from app.core.image_processor import analyze_image # This will use the mock classifier
+from src.core.image_processor import analyze_image # This will use the mock classifier
+from src.core.database import DatabaseManager
 
 def process_single_image(image_path: str) -> dict:
     """Analyzes a single image and returns a record dictionary."""
@@ -71,20 +40,20 @@ def populate_database_with_dataset(dataset_root: str, clear_existing: bool = Fal
         return
 
     # --- Database Setup ---
-    # We get the user_data_dir from the dummy_app instance that was run earlier.
-    # This ensures we're using the same database path as the main application.
-    if not dummy_app.user_data_dir:
-        print("Error: Could not determine the app's user data directory. Aborting.")
-        return
-
-    main_db_path = r"C:\Users\kenne\Group_2_Repo_Kivy_Dev\mangofy.db"
+    # Explicitly define the database path to match the main application.
+    # The app name 'mangofy' is derived from the MangofyApp class name.
+    app_name = 'mangofy'
+    if sys.platform == 'win32':
+        db_folder = os.path.join(os.environ['APPDATA'], app_name)
+    else: # macOS and Linux
+        db_folder = os.path.join(os.path.expanduser('~'), '.config', app_name)
+    
+    os.makedirs(db_folder, exist_ok=True)
+    main_db_path = os.path.join(db_folder, "mangofy.db")
     print(f"Targeting main app database at: {main_db_path}")
 
     db_manager = DatabaseManager(db_path=main_db_path)
     db_manager.initialize_database()
-
-    # --- Add a synchronous method to the instance for this script's use ---
-    DatabaseManager.add_tree_sync = add_tree_sync
     
     # Create a tree for this dataset and get its ID
     dataset_tree_name = "Imported Dataset"
