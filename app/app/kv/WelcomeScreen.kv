@@ -1,0 +1,24 @@
+#:kivy 2.0.0
+
+<WelcomeScreen>:
+    # Semi-transparent white background for the welcome screen
+    canvas.before:
+        Color:
+            rgba: 1, 1, 1, 0.90  # White with 90% opacity
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # Centered label prompting the user to tap the screen
+    Label:
+        id: tap_label  # Referenced in Python for fade animation
+        text: "Tap to start scanning"
+        color: 105/255, 133/255, 105/255, 1  # Greenish color
+        font_size: 36
+        bold: True
+        halign: 'center'
+        valign: 'middle'
+        opacity: 1  # Fully visible at start; will animate in Python
+        size_hint: None, None
+        size: self.texture_size  # Label size matches text content
+        pos_hint: {"center_x": 0.5, "center_y": 0.5}  # Center label on screen

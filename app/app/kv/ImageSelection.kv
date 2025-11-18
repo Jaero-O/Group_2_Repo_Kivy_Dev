@@ -1,0 +1,103 @@
+#:kivy 2.0.0
+
+#:import RecycleViewImage app.screens.image_selection_screen.RecycleViewImage
+
+<ImageSelectionScreen>:
+    name: 'image_selection'
+
+    # Background
+    canvas.before:
+        Color:
+            rgba: 248/255, 248/255, 248/255, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # Header Section
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        height: 50
+        width: self.parent.width
+        pos_hint: {"x": 0.06, "y": 0.92}
+        spacing: 5.3
+
+        Image:
+            source: "app/assets/records.png"
+            size_hint: None, None
+            size: 35, 35
+            allow_stretch: True
+            keep_ratio: True
+            color: 6/255, 87/255, 6/255, 1
+            mipmap: True
+
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        height: 50
+        width: self.parent.width
+        pos_hint: {"x": 0.17, "y": 0.91}
+        spacing: 5.3
+
+        Label:
+            text: root.tree_name
+            color: 3/255, 30/255, 0/255, 1
+            font_size: 32
+            bold: True
+            valign: "middle"
+            halign: "left"
+            text_size: self.size
+
+    # Back Button
+    RoundedButton:
+        id: back_button
+        size_hint: None, None
+        size: 100, 36
+        pos_hint: {"x": 0.79, "y": 0.915}
+        on_release: app.root.current = 'records'
+
+        BoxLayout:
+            orientation: "horizontal"
+            size: self.size
+            spacing: 6
+            padding: [0, 0, 0, 0]
+            pos_hint: {"center_y": 0.5}
+            size: back_button.size
+            pos: back_button.pos
+
+            Image:
+                source: "app/assets/back.png"
+                allow_stretch: True
+                keep_ratio: True
+                size_hint: None, None
+                size: 20, 20
+                pos_hint: {"center_y": 0.5}
+                mipmap: True
+
+            Label:
+                text: "Back"
+                color: 3/255, 30/255, 0/255, 1
+                font_size: 16
+                bold: True
+                size_hint_x: None
+                width: self.texture_size[0]
+                halign: "left"
+                valign: "middle"
+                pos_hint: {"center_y": 0.5}
+
+
+    # Image Gallery Section
+    RecycleView:
+        id: image_rv
+        size_hint: (0.9, 0.85)
+        pos_hint: {"center_x": 0.5, "y": 0}
+        bar_width: 8
+        viewclass: 'RecycleViewImage'
+        RecycleGridLayout:
+            cols: 3
+            spacing: 10
+            padding: 20
+            size_hint_y: None
+            height: self.minimum_height
+            default_size: None, 133  # Set default height for rows
+            default_size_hint: 1, None

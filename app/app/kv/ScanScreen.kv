@@ -1,0 +1,175 @@
+#:kivy 2.0.0
+
+<ScanScreen>:
+    # Background image for the scan screen
+    canvas.before:
+        Rectangle:
+            source: "app/assets/placeholder_bg1.png"
+            pos: self.pos
+            size: self.size
+
+    # Cancel Button
+    RoundedButton:
+        id: cancel_button
+        size_hint: None, None
+        size: 70, 70
+        pos_hint: {"center_x": 0.20, "y": 0.07}
+        on_release: app.root.current = 'home'  # Navigate back to Home screen
+
+        # Button shadow, base color, and touch feedback
+        canvas.before:
+            Color:
+                rgba: self.shadow_color
+            RoundedRectangle:
+                pos: self.x + self.shadow_offset_x, self.y - self.shadow_offset_y
+                size: self.size
+                radius: [18, 18, 18, 18]
+            Color:
+                rgba: 1, 1, 1, 1
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [18, 18, 18, 18]
+            Color:
+                rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0  # Touch feedback overlay
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [18, 18, 18, 18]
+
+        # Layout containing icon and label
+        RelativeLayout:
+            size: cancel_button.size
+            pos: cancel_button.pos
+            BoxLayout:
+                orientation: "vertical"
+                size_hint: 1, 1
+                spacing: 2
+                padding: [0, 10, 0, 6]
+                Image:
+                    source: "app/assets/cancel.png"
+                    allow_stretch: True
+                    keep_ratio: True
+                    size_hint_y: 0.65
+                    pos_hint: {"center_x": 0.5}
+                    mipmap: True
+                Label:
+                    text: "Cancel"
+                    color: 3/255, 30/255, 0/255, 1  # Dark greenish
+                    font_size: 13
+                    bold: True
+                    size_hint_y: 0.35
+                    halign: "center"
+                    valign: "middle"
+                    text_size: self.size
+
+    # Scan Button
+    GradientScanButton:
+        id: scan_button
+        size_hint: None, None
+        size: 110, 110
+        pos_hint: {"center_x": 0.50, "y": 0.04}
+        on_release: app.root.current = 'scanning'  # Navigate to scanning screen
+
+        # Button shadow, gradient texture, and touch feedback
+        canvas.before:
+            Color:
+                rgba: self.shadow_color
+            RoundedRectangle:
+                pos: self.x + self.shadow_offset_x, self.y - self.shadow_offset_y
+                size: self.size
+                radius: [25, 25, 25, 25]
+            Color:
+                rgba: 1, 1, 1, 1
+            RoundedRectangle:
+                texture: self.gradient_texture
+                pos: self.pos
+                size: self.size
+                radius: [25, 25, 25, 25]
+            Color:
+                rgba: 0.2, 0.2, 0.2, 0.3 if self.state == 'down' else 0  # Touch feedback overlay
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [25, 25, 25, 25]
+
+        # Layout containing scan icon and label
+        RelativeLayout:
+            size: scan_button.size
+            pos: scan_button.pos
+            BoxLayout:
+                orientation: "vertical"
+                size_hint: 1, 1
+                spacing: 3
+                padding: [0, 15, 0, 8]
+                Image:
+                    source: "app/assets/scan2.png"
+                    allow_stretch: True
+                    keep_ratio: True
+                    size_hint_y: 0.65
+                    pos_hint: {"center_x": 0.5}
+                    mipmap: True
+                Label:
+                    text: "Scan"
+                    color: 1, 1, 1, 1
+                    font_size: 18
+                    bold: True
+                    size_hint_y: 0.35
+                    halign: "center"
+                    valign: "middle"
+                    text_size: self.size
+
+    # Guide Button
+    RoundedButton:
+        id: guide_button
+        size_hint: None, None
+        size: 70, 70
+        pos_hint: {"center_x": 0.80, "y": 0.07}
+        on_release: app.root.current = 'guide'  # Navigate to guide screen
+
+        # Button shadow, base color, and touch feedback
+        canvas.before:
+            Color:
+                rgba: self.shadow_color
+            RoundedRectangle:
+                pos: self.x + self.shadow_offset_x, self.y - self.shadow_offset_y
+                size: self.size
+                radius: [18, 18, 18, 18]
+            Color:
+                rgba: 1, 1, 1, 1
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [18, 18, 18, 18]
+            Color:
+                rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0  # Touch feedback overlay
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [18, 18, 18, 18]
+
+        # Layout containing guide icon and label
+        RelativeLayout:
+            size: guide_button.size
+            pos: guide_button.pos
+            BoxLayout:
+                orientation: "vertical"
+                size_hint: 1, 1
+                spacing: 2
+                padding: [0, 10, 0, 6]
+                Image:
+                    source: "app/assets/guide.png"
+                    allow_stretch: True
+                    keep_ratio: True
+                    size_hint_y: 0.65
+                    pos_hint: {"center_x": 0.5}
+                    mipmap: True
+                Label:
+                    text: "Guide"
+                    color: 3/255, 30/255, 0/255, 1
+                    font_size: 13
+                    bold: True
+                    size_hint_y: 0.35
+                    halign: "center"
+                    valign: "middle"
+                    text_size: self.size
