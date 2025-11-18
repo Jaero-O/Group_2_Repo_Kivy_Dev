@@ -74,73 +74,265 @@ erDiagram
         INTEGER severity_level_id FK "Foreign key to tbl_severity_level"
         REAL severity_percentage "Calculated as (lesion_area / leaf_area)"
         TEXT image_path "File path to the saved scan image"
-        DATETIME scan_timestamp "The date and time of the scan"
-        INTEGER is_archived "0 for active, 1 for archived"
-    }
+        # Mangofy — Mango Leaf Disease Scanner (Project README)
 
-    tbl_tree ||--|{ tbl_scan_record : "has"
-    tbl_scan_record }|--|| tbl_disease : "is"
-    tbl_scan_record }|--|| tbl_severity_level : "is at"
-```
+        This repository contains the Mangofy Kivy application and supporting tools for dataset handling, model hosting, and CI automation.
 
-### Database Tables
+        This README documents everything a new developer or maintainer needs to run, test, and extend the system, including how we handle large ML artifacts and how to recover or re-sync after the repository history was cleaned.
 
-1.  **`tbl_disease`** (Lookup Table)
-    *   Stores static, detailed information about each detectable condition.
-    *   **Columns**: `id`, `name` (e.g., 'Anthracnose', 'Healthy'), `description`, `symptoms`, `prevention`.
+        --
 
-2.  **`tbl_severity_level`** (Lookup Table)
-    *   Defines the different stages of infection that the model can classify.
-    *   **Columns**: `id`, `name` (e.g., 'Early Stage', 'Advanced Stage'), `description`.
+        **Quick links**
 
-3.  **`tbl_scan_record`** (Main Data Table)
-    *   Stores the results of every scan performed by the user.
-    *   **Columns**: `id`, `scan_timestamp`, `tree_id` (FK), `disease_id` (FK), `severity_level_id` (FK), `severity_percentage` (REAL), `image_path`, `is_archived`.
+        - App entry: `main.py` (app bootstrap in `src/`)
+        - App code: `src/app/` (core, screens, kv files)
+        - Tests: `tests/`
+        - Model helpers: `scripts/publish_models_github.ps1`, `scripts/download_models.py`
+        - CI workflow: `.github/workflows/download-models.yml`
+        - Models Release (uploaded): `v1.0-models` (GitHub Release)
 
-## Data Flow: From Scan to Save
+        --
 
-1.  **Capture/Select Image**: The user provides an image via the camera (`ScanScreen`) or file system (`ImageSelection` screen).
-2.  **Analyze**: The application navigates to the `ResultScreen`.
-3.  **ML Prediction**: A TensorFlow Lite model runs on the image to predict the `disease_name` (e.g., "Anthracnose") and `severity_name` (e.g., "Advanced Stage").
-4.  **Calculate Severity %**: The `image_processor.calculate_severity(image_path)` function is called to get the quantitative `severity_percentage`.
-5.  **Fetch Foreign Keys**: The app calls `database.get_lookup_ids(disease_name, severity_name)` to get the corresponding IDs from the `Disease` and `SeverityLevel` tables.
-6.  **Save Record**: When the user clicks "Save", the `ResultScreen` calls `database.save_record_async()` with all the collected information (`disease_id`, `severity_level_id`, `severity_percentage`, `image_path`).
-7.  **Confirmation**: A callback from the asynchronous save operation updates the UI to confirm that the record has been saved successfully.
+        **Table of contents**
 
-## Installation
+        - Project overview
+        - Repo layout
+        - Environment & setup (Windows-focused + cross-platform notes)
+        - Running the app (dev mode)
+        - Tests and test utilities
+        - Database details (`mangofy.db`)
+        - ML models & hosting (GitHub Releases + download/upload scripts)
+        - CI: workflow for downloading models
+        - Post-history-rewrite collaborator instructions
+        - Developer workflow & common commands
+        - Troubleshooting
 
-To run this application, you need to have Python and Kivy installed.
+        --
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/Group_2_Repo_Kivy_Dev.git
-    cd Group_2_Repo_Kivy_Dev
-    ```
+        **Project overview**
 
-2.  **Create a virtual environment (recommended):**
-    ```bash
-    python -m venv venv
-    source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-    ```
+        Mangofy is a Kivy-based application for detecting leaf disease (anthracnose) in mango leaves. It includes:
 
-3.  **Install the dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+        - A Kivy UI (screens, KV files) under `src/app/`.
+        - A small SQLite-backed local database used for persisting scans and lookups (`mangofy.db`).
+        - ML inference code that uses TFLite models for on-device prediction.
+        - Image-processing helpers to compute a severity percentage from segmented lesions.
 
-## Usage
+        The repository also contains test coverage and utilities to host large model files outside of Git history (we use a GitHub Release for binary model hosting).
 
-To run the application, execute the `main.py` file located inside the `kivy-lcd-app` directory:
+        --
 
-```bash
-python kivy-lcd-app/main.py
-```
+        **Repository layout (important paths)**
 
-## Dependencies
+        - `src/` — application source (Kivy app under `src/app/`).
+        - `ml/` — ML utilities and scripts (predictor, severity calculator, leftover utils)
+        - `ml/Plant_Disease_Prediction/` — model metadata, notebooks, scripts (NOT the canonical place for large binaries)
+        - `scripts/` — helpers for model upload/download and other utilities
+        - `tests/` — unit and integration tests
+        - `.github/workflows/` — CI workflows (download-models.yml added)
+        - `README.md` — this file
 
-The application relies on the following key Python libraries:
+        --
 
-*   **Kivy:** For building the cross-platform graphical user interface.
-*   **NumPy:** For numerical operations, especially in image processing.
-*   **Pillow:** For image manipulation tasks.
-*   **TensorFlow:** For running the machine learning model for disease prediction.
+        **Environment & setup**
+
+        Prerequisites (Windows recommended flow):
+
+        - Python 3.10+ installed and accessible in PATH
+        - Git CLI
+        - PowerShell (Windows) or bash (Linux/macOS)
+        - For model publishing: GitHub CLI (`gh`) installed and authenticated
+
+        Setup steps (Windows PowerShell)
+
+        1) Create and activate a virtual environment:
+
+        ```powershell
+        python -m venv .venv
+        .\.venv\Scripts\Activate.ps1
+        ```
+
+        2) Upgrade pip and install dependencies:
+
+        ```powershell
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        ```
+
+        Notes for Linux/macOS:
+
+        ```bash
+        python -m venv .venv
+        source .venv/bin/activate
+        pip install -r requirements.txt
+        ```
+
+        --
+
+        **Running the app (development)**
+
+        - From repo root, with venv active:
+
+        PowerShell:
+        ```powershell
+        python main.py
+        ```
+
+        Or if your entry was moved/structured under `src/` you may run via:
+        ```powershell
+        python -m src.main
+        ```
+
+        Notes:
+        - The Kivy app requires a display (on headless CI use a virtual framebuffer or run on a desktop environment).
+        - The app defers heavy initialization (KV loading and screen imports) until DB setup finishes — this helps unit tests run without starting the full UI.
+
+        --
+
+        **Testing**
+
+        - Run the full test suite (unit tests):
+
+        PowerShell / bash:
+        ```powershell
+        python -m unittest discover tests
+        ```
+
+        - Individual test file:
+
+        ```powershell
+        python -m unittest tests.test_database
+        ```
+
+        Test design notes:
+        - Tests are written to be deterministic and avoid requiring native-only packages (we inject fake `tflite_runtime` where needed and skip cv2 tests when OpenCV is not available).
+
+        --
+
+        **Database (`mangofy.db`)**
+
+        - The app stores data in a SQLite DB named `mangofy.db` located under the user data directory (or `populated_mangofy.db` in dev/test scenarios). The schema includes `tbl_disease`, `tbl_severity_level`, `tbl_tree`, and `tbl_scan_record`.
+        - There are utilities in `src/app/core/database.py` to initialize and populate lookup tables. Use the provided tests to validate DB creation.
+
+        --
+
+        **ML models & hosting (how we handle large files)**
+
+        Rationale:
+        - Large artifacts (models, videos, datasets) were removed from Git history to keep the repository small and fast. The canonical location for binary models is a GitHub Release named `v1.0-models`.
+
+        What we added to help:
+        - `scripts/publish_models_github.ps1` — PowerShell script that uses `gh` to create a release and upload assets. It supports absolute paths and glob-style patterns.
+        - `scripts/download_models.py` — Python script that downloads release assets by tag; supports `GITHUB_TOKEN` from the environment for private releases.
+        - `.github/workflows/download-models.yml` — CI job that downloads models into `models/` for workflows.
+
+        Uploading models (manual, using `gh` locally)
+
+        1. Ensure `gh` is installed and logged in:
+
+        ```powershell
+        gh auth login
+        gh auth status
+        ```
+
+        2. From the repo root (PowerShell), run:
+
+        ```powershell
+        .\scripts\publish_models_github.ps1 -Tag 'v1.0-models' -Title 'ML models v1' -Notes 'Models removed from repo'
+        ```
+
+        Or specify absolute paths if files live elsewhere:
+
+        ```powershell
+        .\scripts\publish_models_github.ps1 -Tag 'v1.0-models' -Pattern 'C:\path\to\h5\*,C:\path\to\tflite\*'
+        ```
+
+        Downloading models (local or CI):
+
+        ```powershell
+        python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest models/
+        ```
+
+        CI (GitHub Actions): The workflow `.github/workflows/download-models.yml` will run the same downloader using `GITHUB_TOKEN`.
+
+        Alternatives to GitHub Releases
+
+        - Google Drive: free, but requires managing share links; I can extend `download_models.py` to fetch from Drive if you prefer.
+        - Self-hosting (S3 or similar): works but may incur costs.
+
+        --
+
+        **Post-history-rewrite collaborator instructions (important)**
+
+        Because the repo had large binary files removed from history, the `integration` branch was rewritten and force-pushed. Collaborators must not pull normally — they should re-clone or reset.
+
+        Safest (recommended): re-clone:
+
+        ```powershell
+        git clone https://github.com/Jaero-O/Group_2_Repo_Kivy_Dev.git
+        cd Group_2_Repo_Kivy_Dev
+        git checkout integration
+        ```
+
+        If a contributor must preserve local work, they should:
+
+        ```powershell
+        git fetch origin
+        git checkout -b my-local-backup
+        git rebase --onto origin/integration <old-integration-commit> my-local-backup
+        # or create patches with `git format-patch` and reapply after re-cloning
+        ```
+
+        If you need a short message to send to the team, use the collaborator note in `docs/MODEL_HOSTING.md`.
+
+        --
+
+        **Developer workflow & common commands**
+
+        - Run tests:
+
+        ```powershell
+        python -m unittest discover tests
+        ```
+
+        - Start app (dev):
+
+        ```powershell
+        python main.py
+        ```
+
+        - Create a release and upload models (local):
+
+        ```powershell
+        gh auth login
+        .\scripts\publish_models_github.ps1 -Tag 'v1.0-models' -Title 'ML models v1'
+        ```
+
+        - Download models locally:
+
+        ```powershell
+        python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest models/
+        ```
+
+        --
+
+        **Troubleshooting**
+
+        - Push fails due to large files or remote timeouts: we removed large files and force-pushed a cleaned branch. If you encounter push failures, ensure you re-cloned the cleaned repo.
+        - `gh` CLI not found: install from https://cli.github.com/ and authenticate with `gh auth login`.
+        - Running Kivy on headless CI: use a headful runner or xvfb on Linux.
+
+        --
+
+        **Contributing**
+
+        - Open issues and PRs are welcome. For large model changes, use Releases or external storage rather than committing binaries.
+
+        --
+
+        If you'd like, I can also:
+
+        - Add a release-upload GitHub Actions workflow (automates uploads from a CI artifact or from a secret-uploaded artifact).
+        - Remove the binary model files currently copied into `ml/Plant_Disease_Prediction/h5` and `tflite` (recommended to avoid duplicating the Release contents in git history).
+
+        Thank you — if anything in this README should be expanded or made more specific to your environment, tell me which section to change and I'll update it.

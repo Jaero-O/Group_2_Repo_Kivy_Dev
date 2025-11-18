@@ -1,23 +1,8 @@
-# Byte-compiled / optimized / DLL files
-__pycache__/
-*.pyc
-*c.pyo
-*o.py
-
-# Virtual environment
-.venv/
+Database/
+leaf-detection/models/
+.env/
+env/
 venv/
-ENV/
-
-# Database files
-*.db
-*.db-shm
-*.db-wal
-populated_mangofy.db
-mangofy.db
-# Large ML artifacts and generated files
-ml/**/h5/
-ml/**/tflite/
-ml/leaf-detection/scripts/
-logs/
-data/leaf_features_complete.csv
+Plant_Disease_Prediction/scripts/results/
+Plant_Disease_Prediction/data/
+results_log.txt
