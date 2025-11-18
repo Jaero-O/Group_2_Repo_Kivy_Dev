@@ -1,59 +1,44 @@
-from kivy.app import App
 from kivy.uix.screenmanager import Screen
 from kivy.properties import ObjectProperty
 from kivy.animation import Animation
-from kivy.lang import Builder
 from kivy.graphics import Color, RoundedRectangle, Line
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.behaviors import ButtonBehavior
-from kivy.clock import Clock, mainthread
-from kivy.factory import Factory
+from kivy.clock import Clock
+
 
 class TreeItem(ButtonBehavior, BoxLayout):
-    # ... (rest of the class)
     pass
+
 
 class ModalButton(ButtonBehavior, BoxLayout):
     pass
 
-# --- SOLUTION: Register custom widget classes with Kivy's Factory ---
-Factory.register('TreeItem', cls=TreeItem)
-Factory.register('ModalButton', cls=ModalButton)
 
 class SaveScreen(Screen):
-    """
-    A screen that allows the user to select a tree and save the current scan result to it.
-    """
     selected_tree = ObjectProperty(None, rebind=True, allownone=True)
 
     def on_pre_enter(self, *args):
+        # Build tree list each time the screen is entered
         self.build_tree_list()
 
     def build_tree_list(self):
         tree_list = self.ids.tree_list
         tree_list.clear_widgets()
-        self.selected_tree = None
-        from app.core.utils import call_when_db_ready
-
-        def _call():
-            App.get_running_app().db_manager.get_all_trees_async(self.on_trees_loaded)
-
-        call_when_db_ready(_call)
-
-    def on_trees_loaded(self, trees):
-        self.trees = trees
+        self.trees = ["Kenny Tree", "Jae Tree", "Lei Tree", "Emilay Tree"]
         self.filtered_trees = self.trees.copy()
-        for tree in self.trees:
-            self.add_tree_item(tree)
+        self.selected_tree = None
+        for name in self.trees:
+            self.add_tree_item(name)
 
-    def add_tree_item(self, tree):
-        name = tree['name']
+    def add_tree_item(self, name):
+        # Create a container with padding for the border
         container = BoxLayout(
             orientation='horizontal',
             size_hint_y=None,
-            height=42,
-            padding=[3, 2, 3, 2]
+            height=42,  # Increased from 38 to accommodate top/bottom padding
+            padding=[3, 2, 3, 2]  # Add padding on all sides for border visibility
         )
         
         box = TreeItem(
@@ -61,9 +46,10 @@ class SaveScreen(Screen):
             size_hint_y=None,
             height=38,
             padding=[10, 0, 10, 0],
-            on_release=lambda *_: self.select_tree(box, tree)
+            on_release=lambda *_: self.select_tree(box, name)
         )
 
+        # Background and border setup
         with box.canvas.before:
             box.bg_color = Color(255 / 255, 255 / 255, 255 / 255, 1)
             box.bg_rect = RoundedRectangle(radius=[10], pos=box.pos, size=box.size)
@@ -96,13 +82,16 @@ class SaveScreen(Screen):
         box.add_widget(label)
         box.tree_name = name
         
+        # Add box to container, then container to tree_list
         container.add_widget(box)
         self.ids.tree_list.add_widget(container)
 
+        # Fade-in animation
         container.opacity = 0
         Animation(opacity=1, duration=0.3).start(container)
 
-    def select_tree(self, box, tree):
+    def select_tree(self, box, name):
+        # Reset colors of all items (accounting for container wrapper)
         for container in self.ids.tree_list.children:
             if hasattr(container, 'children') and len(container.children) > 0:
                 child = container.children[0]
@@ -110,82 +99,57 @@ class SaveScreen(Screen):
                     child.border_color.rgba = (0, 0, 0, 0.08)
                     child.border_line.width = 1
 
+        # Highlight selected with green border
         box.border_color.rgba = (0 / 255, 152 / 255, 0 / 255, 1)
         box.border_line.width = 2
-        self.selected_tree = tree
+        self.selected_tree = name
 
     def on_add_tree(self):
+        # Handle adding a new tree
         new_name = self.ids.add_input.text.strip()
         if new_name:
-            for tree in self.trees:
-                if tree['name'] == new_name:
-                    self.show_modal(f"'{new_name}' already exists!", show_buttons=False)
-                    return
+            if new_name in self.trees:
+                self.show_modal(f"'{new_name}' already exists!", show_buttons=False)
+                return
             
-            App.get_running_app().db_manager.add_tree_async(new_name, self.on_tree_added)
-
-    def on_tree_added(self, new_tree):
-        self.trees.append(new_tree)
-        self.add_tree_item(new_tree)
-        self.ids.add_input.text = ''
-        self.show_modal(f"'{new_tree['name']}' added successfully!", show_buttons=False)
+            self.trees.append(new_name)
+            self.filtered_trees.append(new_name)
+            self.add_tree_item(new_name)
+            self.ids.add_input.text = ''
+            self.show_modal(f"'{new_name}' added successfully!", show_buttons=False)
 
     def on_search_text(self, text):
+        # Filter tree list based on search text
         tree_list = self.ids.tree_list
         tree_list.clear_widgets()
         
         search_text = text.lower().strip()
         
         if search_text:
-            self.filtered_trees = [t for t in self.trees if search_text in t['name'].lower()]
+            self.filtered_trees = [t for t in self.trees if search_text in t.lower()]
         else:
             self.filtered_trees = self.trees.copy()
         
+        # Clear selection when searching
         self.selected_tree = None
         
-        for tree in self.filtered_trees:
-            self.add_tree_item(tree)
+        for name in self.filtered_trees:
+            self.add_tree_item(name)
         
+        # Scroll to top after filtering
         Clock.schedule_once(lambda dt: setattr(self.ids.scroll_view, 'scroll_y', 1), 0.1)
 
     def on_save_button(self):
+        # Handle saving logic
         if not self.selected_tree:
             self.show_modal("Please select a tree first", show_buttons=False)
             return
 
-        app = App.get_running_app()
-        analysis_result = getattr(app, 'analysis_result', {})
-        if not analysis_result:
-            self.show_modal("Error: No analysis result found.", show_buttons=False)
-            return
-
-        disease_id, severity_level_id = app.db_manager.get_lookup_ids(
-            disease_name=analysis_result['disease_name'],
-            severity_name=analysis_result['severity_name']
-        )
-
-        if disease_id is None or severity_level_id is None:
-            self.show_modal("Error: Could not find disease or severity in DB.", show_buttons=False)
-            return
-
-        app.db_manager.save_record_async(
-            tree_id=self.selected_tree['id'],
-            disease_id=disease_id,
-            severity_level_id=severity_level_id,
-            severity_percentage=analysis_result['severity_percentage'],
-            image_path=analysis_result['image_path'],
-            on_success_callback=self.on_save_success,
-            on_error_callback=self.on_save_error
-        )
-
-    def on_save_success(self, success_flag):
-        message = f"Leaf successfully saved\nto '{self.selected_tree['name']}'"
+        message = f"Leaf successfully saved\nto '{self.selected_tree}'"
         self.show_modal(message, show_buttons=True)
 
-    def on_save_error(self, error_message):
-        self.show_modal(f"Error saving record:\n{error_message}", show_buttons=False)
-
     def show_modal(self, message, show_buttons=True):
+        # Create overlay background
         from kivy.uix.floatlayout import FloatLayout
         
         overlay = FloatLayout(
@@ -202,6 +166,7 @@ class SaveScreen(Screen):
             size=lambda _, v: setattr(overlay.bg_rect, 'size', v)
         )
         
+        # Create modal with dynamic height
         modal_height = 170 if show_buttons else 120
         
         modal = BoxLayout(
@@ -214,6 +179,7 @@ class SaveScreen(Screen):
         )
 
         with modal.canvas.before:
+            # Shadow and background
             Color(0, 0, 0, 0.25)
             modal.shadow_rect = RoundedRectangle(
                 radius=[16], 
@@ -235,6 +201,7 @@ class SaveScreen(Screen):
         )
 
         if show_buttons:
+            # Title label for success modal
             title_label = Label(
                 text="Leaf Saved!",
                 color=(3 / 255, 33 / 255, 0 / 255, 1),
@@ -248,9 +215,11 @@ class SaveScreen(Screen):
             title_label.bind(size=lambda l, _: setattr(l, 'text_size', l.size))
             modal.add_widget(title_label)
         
+        # Add spacer for non-button modals to center the message
         if not show_buttons:
             modal.add_widget(BoxLayout(size_hint_y=0.3))
         
+        # Message label
         message_label = Label(
             text=message,
             color=(49 / 255, 49 / 255, 49 / 255, 1),
@@ -264,10 +233,12 @@ class SaveScreen(Screen):
         message_label.bind(size=lambda l, _: setattr(l, 'text_size', l.size))
         modal.add_widget(message_label)
         
+        # Add bottom spacer for non-button modals
         if not show_buttons:
             modal.add_widget(BoxLayout(size_hint_y=0.3))
         
         if show_buttons:
+            # Buttons container
             buttons_box = BoxLayout(
                 orientation='horizontal',
                 size_hint_y=None,
@@ -275,6 +246,7 @@ class SaveScreen(Screen):
                 spacing=8
             )
             
+            # Scan Again Button
             scan_again_btn = ModalButton()
             scan_again_btn.size_hint_x = 0.5
             scan_again_btn.bind(on_release=lambda *args: self.close_modal_and_navigate(overlay, 'scan'))
@@ -303,6 +275,7 @@ class SaveScreen(Screen):
             scan_label.bind(size=lambda l, _: setattr(l, 'text_size', (l.width, None)))
             scan_again_btn.add_widget(scan_label)
             
+            # Home Button
             home_btn = ModalButton()
             home_btn.size_hint_x = 0.5
             home_btn.bind(on_release=lambda *args: self.close_modal_and_navigate(overlay, 'home'))
@@ -331,6 +304,7 @@ class SaveScreen(Screen):
             home_label.bind(size=lambda l, _: setattr(l, 'text_size', (l.width, None)))
             home_btn.add_widget(home_label)
             
+            # Add buttons to container
             buttons_box.add_widget(scan_again_btn)
             buttons_box.add_widget(home_btn)
             modal.add_widget(buttons_box)
@@ -338,18 +312,22 @@ class SaveScreen(Screen):
         overlay.add_widget(modal)
         self.add_widget(overlay)
 
+        # Fade in animation
         anim = Animation(opacity=1, duration=0.25)
         anim.start(overlay)
         
+        # Auto-close for non-button modals
         if not show_buttons:
             Clock.schedule_once(lambda dt: self.close_modal(overlay), 2.0)
     
     def close_modal(self, overlay):
+        # Close modal without navigation
         anim = Animation(opacity=0, duration=0.2)
         anim.bind(on_complete=lambda *_: self.remove_widget(overlay))
         anim.start(overlay)
     
     def close_modal_and_navigate(self, overlay, screen_name):
+        # Close modal and navigate to specified screen
         anim = Animation(opacity=0, duration=0.2)
         anim.bind(on_complete=lambda *_: (
             self.remove_widget(overlay),

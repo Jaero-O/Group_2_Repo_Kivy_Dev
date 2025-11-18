@@ -25,8 +25,9 @@
     Image:
         source: root.icon_source
         size_hint: None, None
-        size: '40dp', '40dp'
-        fit_mode: 'contain'
+        size: 40, 40
+        allow_stretch: True
+        keep_ratio: True
         pos_hint: {"center_x": 0.5, "top": 1}
         mipmap: True
     
@@ -69,11 +70,12 @@
 
     # Logo inside the inner panel
     Image:
-        source: "src/app/assets/logo.png"
-        fit_mode: 'contain'
+        source: "app/assets/logo.png"
+        allow_stretch: True
+        keep_ratio: True
         size_hint: None, None
-        size: '300dp', '300dp'
-        pos_hint: {"center_x": 0.5, "center_y": 0.62}
+        size: 300, 300
+        pos_hint: {"center_x": 0.5, "center_y": 0.6}
 
     # Custom Rounded Scan Button
     ScanButton:
@@ -111,8 +113,9 @@
 
                 # Scan icon inside the button
                 Image:
-                    source: "src/app/assets/scan.png"
-                    fit_mode: 'contain'
+                    source: "app/assets/scan.png"
+                    allow_stretch: True
+                    keep_ratio: True
                     size_hint_y: 0.65
                     pos_hint: {'center_x': 0.5}
                     mipmap: True
@@ -140,17 +143,17 @@
         # Records Button
         TouchableButton:
             screen_name: 'records'
-            icon_source: "src/app/assets/records.png"
+            icon_source: "app/assets/records.png"
             button_text: "Records"
 
         # Share Button
         TouchableButton:
             screen_name: 'share'
-            icon_source: "src/app/assets/share.png"
+            icon_source: "app/assets/share.png"
             button_text: "Share"
 
         # Help Button
         TouchableButton:
             screen_name: 'help'
-            icon_source: "src/app/assets/help.png"
+            icon_source: "app/assets/help.png"
             button_text: "Help"

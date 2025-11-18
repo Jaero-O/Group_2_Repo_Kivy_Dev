@@ -1,39 +1,24 @@
 #:kivy 2.0.0
 
-<RecordTreeItem@ButtonBehavior+BoxLayout>:
-
 # Record Item Layout
 <RecordTreeItem>:
     orientation: "horizontal"
     size_hint_y: None
-    height: '49dp'
+    height: 49
     padding: [15, 0, 15, 0]
-    opacity: 0 # Start invisible for fade-in animation
 
-    # This block was previously incorrectly indented
     canvas.before:
-        Color: # Background color
-            rgba: 1, 1, 1, 1
+        Color:
+            rgba: 232/255, 255/255, 208/255, 1
         RoundedRectangle:
             pos: self.pos
             size: self.size
             radius: [11]
-        Color: # Border color
+        Color:
             rgba: 0, 0, 0, 0.1
         Line:
             rounded_rectangle: (self.x, self.y, self.width, self.height, 11)
             width: 1
-
-    Label:
-        text: root.display_name
-        color: 49/255, 49/255, 49/255, 1
-        font_size: 18
-        bold: True
-        halign: 'left'
-        valign: 'middle'
-        # This binding ensures the text wraps correctly if it's too long,
-        # though for single-line names it primarily helps with alignment.
-        text_size: self.width, None
 
 
 # Records Screen Layout
@@ -55,10 +40,11 @@
         spacing: 5.3
 
         Image:
-            source: "src/app/assets/records.png"
+            source: "app/assets/records.png"
             size_hint: None, None
             size: 35, 35
-            fit_mode: 'contain'
+            allow_stretch: True
+            keep_ratio: True
             mipmap: True
 
     BoxLayout:
@@ -96,9 +82,10 @@
             pos: back_button.pos
 
             Image:
-                source: "src/app/assets/back.png"
+                source: "app/assets/back.png"
+                allow_stretch: True
+                keep_ratio: True
                 size_hint: None, None
-                fit_mode: 'contain'
                 size: 20, 20
                 pos_hint: {"center_y": 0.5}
                 mipmap: True
@@ -149,10 +136,11 @@
             on_text: root.on_search_text(self.text)
 
         Image:
-            source: "src/app/assets/search.png"
-            fit_mode: 'contain'
+            source: "app/assets/search.png"
             size_hint: None, None
             size: 17, 17
+            allow_stretch: True
+            keep_ratio: True
             pos_hint: {"center_y": 0.5}
 
     # Action Buttons (Edit and Delete)
@@ -198,11 +186,12 @@
                     pos: self.parent.pos
 
                     Image:
-                        source: "src/app/assets/edit.png"
+                        source: "app/assets/edit.png"
                         size_hint: None, None
                         size: 20, 20
                         pos_hint: {"x": 0.05, "center_y": 0.5}
-                        fit_mode: 'contain'
+                        allow_stretch: True
+                        keep_ratio: True
                         mipmap: True
 
                     Label:
@@ -246,11 +235,12 @@
                     pos: self.parent.pos
 
                     Image:
-                        source: "src/app/assets/delete.png"
+                        source: "app/assets/delete.png"
                         size_hint: None, None
                         size: 20, 20
                         pos_hint: {"x": 0.05, "center_y": 0.5}
-                        fit_mode: 'contain'
+                        allow_stretch: True
+                        keep_ratio: True
                         mipmap: True
 
                     Label:
@@ -289,7 +279,7 @@
                 size_hint_y: None
                 height: self.minimum_height
                 padding: [28, 12, 28, 20]
-            
+
         # Add New Tree Bar
         BoxLayout:
             size_hint: None, None
@@ -325,7 +315,7 @@
                 multiline: False
                 cursor_color: 79/255, 79/255, 79/255, 1
                 on_text_validate: root.on_add_tree()
- 
+
             Button:
                 text: "+"
                 size_hint: None, 1

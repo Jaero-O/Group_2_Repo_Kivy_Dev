@@ -4,7 +4,6 @@ from kivy.uix.behaviors import ButtonBehavior
 from kivy.properties import ListProperty, NumericProperty, ObjectProperty
 from kivy.graphics.texture import Texture
 from kivy.clock import Clock
-from kivy.uix.image import AsyncImage
 import numpy as np
 
 # =========================================
@@ -69,17 +68,3 @@ class GradientScanButton(ButtonBehavior, Widget):
 
     def on_release(self):
         self.shadow_offset_y = 3
-
-class RecycleViewImage(ButtonBehavior, AsyncImage): # This is the viewclass for the RecycleView
-    """
-    An image that acts like a button, used in the image grid.
-    It holds the record data associated with the image.
-    The 'record_data' property is automatically populated by the RecycleView
-    from the 'data' list.
-    """
-    record_data = ObjectProperty(None)
-    
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        # Use fit_mode instead of deprecated properties
-        self.fit_mode = "cover"

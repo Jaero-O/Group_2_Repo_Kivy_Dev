@@ -19,10 +19,11 @@
         spacing: 5.3
 
         Image:
-            source: "src/app/assets/leaf_2.png"
+            source: "app/assets/leaf_2.png"
             size_hint: None, None
             size: 35, 35
-            fit_mode: 'contain'
+            allow_stretch: True
+            keep_ratio: True
             mipmap: True
 
     BoxLayout:
@@ -60,8 +61,9 @@
             pos: back_button.pos
 
             Image:
-                source: "src/app/assets/back.png"
-                fit_mode: 'contain'
+                source: "app/assets/back.png"
+                allow_stretch: True
+                keep_ratio: True
                 size_hint: None, None
                 size: 20, 20
                 pos_hint: {"center_y": 0.5}

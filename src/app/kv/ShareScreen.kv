@@ -59,23 +59,12 @@
 
         # QR Code Image
         Image:
-            id: qr_code_image
-            source: root.qr_code_path
+            source: "app/assets/qr_placeholder.png"
             size_hint: None, None
             size: 253, 253
-            pos_hint: {"center_x": 0.5, "y": 0.18}
+            pos_hint: {"center_x": 0.5, "y": 0.12}
             allow_stretch: True
             keep_ratio: True
-
-        # Label to show the server address
-        Label:
-            text: root.server_address_text
-            color: 0, 0, 0, 0.5
-            font_size: 14
-            size_hint: None, None
-            size: self.texture_size
-            pos_hint: {"center_x": 0.5, "y": 0.08}
-            halign: "center"
 
     # Header Section
     BoxLayout:

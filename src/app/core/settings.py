@@ -1,6 +1,5 @@
 # app/core/settings.py
 from kivy.core.window import Window
-import platform, os
 
 # =========================================
 # ✅ SCREEN SETTINGS
@@ -12,25 +11,33 @@ DEV_MODE = False
 # Detect Raspberry Pi
 IS_PI = False
 try:
-    # --- SOLUTION: Use platform module for safe OS checking ---
-    # os.uname() does not exist on Windows and will crash the app.
-    if platform.system() == "Linux":
-        IS_PI = 'raspberrypi' in platform.uname().nodename
+    with open("/proc/cpuinfo") as f:
+        IS_PI = "Raspberry Pi" in f.read()
 except Exception:
     IS_PI = False
+
+if IS_PI or not DEV_MODE:
+    Window.fullscreen = IS_PI
+    if not IS_PI:
+        Window.size = (TARGET_WIDTH, TARGET_HEIGHT)
+    print("🟢 Running in deployment mode → 480x800 or fullscreen.")
+else:
+    Window.size = (BASE_WIDTH, BASE_HEIGHT)
+    Window.fullscreen = False
+    try:
+        import tkinter as tk
+        root = tk.Tk()
+        screen_width = root.winfo_screenwidth()
+        screen_height = root.winfo_screenheight()
+        root.destroy()
+        Window.left = int((screen_width - BASE_WIDTH) / 2)
+        Window.top = int((screen_height - BASE_HEIGHT) / 2)
+        print("🧩 Running in DEV mode (360x640), centered on screen.")
+    except Exception as e:
+        print("⚠️ Centering skipped:", e)
 
 
 def setup_window():
     """Apply window configuration during app startup."""
-    # --- SOLUTION: Move window configuration logic here ---
-    # This function is called at a safe time during app startup.
-    if IS_PI or not DEV_MODE:
-        Window.fullscreen = IS_PI
-        if not IS_PI:
-            Window.size = (TARGET_WIDTH, TARGET_HEIGHT)
-        print("Running in deployment mode")
-    else:
-        Window.size = (BASE_WIDTH, BASE_HEIGHT)
-        Window.fullscreen = False
-        # Let the OS handle window placement.
-        print("🧩 Running in DEV mode (360x640).")
+    # No extra setup needed for now since logic runs at import
+    pass

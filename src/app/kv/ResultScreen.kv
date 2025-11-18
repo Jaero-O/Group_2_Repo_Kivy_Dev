@@ -125,14 +125,6 @@
                         size: self.size
                         radius: [15, 15, 15, 15]
 
-                Image:
-                    source: root.image_path
-                    allow_stretch: True
-                    keep_ratio: True
-                    # --- FIX 1 APPLIED HERE ---
-                    size_hint: 0.9, 0.9
-                    pos_hint: {"center_x": 0.5, "center_y": 0.5}
-
             # Result Details Section
             BoxLayout:
                 orientation: "vertical"
@@ -143,7 +135,6 @@
 
                 # Percentage and Tag Row
                 BoxLayout:
-                    id: confidence_layout
                     orientation: "horizontal"
                     size_hint: 1, None
                     height: 80
@@ -151,7 +142,7 @@
 
                     # Healthy Percentage
                     Label:
-                        text: "A"
+                        text: "100%"
                         color: (38/255, 164/255, 33/255, 1)
                         font_size: 64
                         bold: True
@@ -160,6 +151,26 @@
                         halign: "left"
                         valign: "middle"
 
+                    # Moderate Percentage
+                    # Label:
+                    #     text: "67%"
+                    #     color: 207/255, 191/255, 44/255, 1
+                    #     font_size: 64
+                    #     bold: True
+                    #     size_hint: None, None
+                    #     size: self.texture_size
+                    #     pos_hint: {"x": 0.0, "y": 0.90}   
+
+                    # Anthracnose Percentage
+                    # Label:
+                    #     text: "15%"
+                    #     color: 221/255, 45/255, 29/255, 1
+                    #     font_size: 64
+                    #     bold: True
+                    #     size_hint: None, None
+                    #     size: self.texture_size
+                    #     pos_hint: {"x": 0.0, "y": 0.90}
+
                     Widget:
                         size_hint_x: 1
 
@@ -167,7 +178,7 @@
                         size_hint: None, None
                         size: 140, 30
                         pos_hint: {"center_y": 0.8}
-
+                    
                         # Healthy Tag
                         canvas.before:
                             Color:
@@ -178,17 +189,53 @@
                                 radius: [8]
 
                         Label:
-                            text: root.disease_name.upper()
+                            text: "HEALTHY"
                             color: 0/255, 82/255, 0/255, 1
                             font_size: 16
                             bold: True
                             valign: "middle"
                             halign: "center"
                             text_size: self.size
+                        
+                        # Moderate Tag
+                        # canvas.before:
+                        #     Color:
+                        #         rgba: 255/255, 246/255, 149/255, 1
+                        #     RoundedRectangle:
+                        #         pos: self.pos
+                        #         size: self.size
+                        #         radius: [8]
+
+                        # Label:
+                        #     text: "Moderate"
+                        #     color: 99/255, 91/255, 1/255, 1
+                        #     font_size: 16
+                        #     bold: True
+                        #     valign: "middle"
+                        #     halign: "center"
+                        #     text_size: self.size
+                        
+                        # Anthracnose Tag
+                        # canvas.before:
+                        #     Color:
+                        #         rgba: 255/255, 180/255, 168/255, 1
+                        #     RoundedRectangle:
+                        #         pos: self.pos
+                        #         size: self.size
+                        #         radius: [8]
+
+                        # Label:
+                        #     text: "ANTHRACNOSE"
+                        #     color: 150/255, 22/255, 3/255, 1
+                        #     font_size: 16
+                        #     bold: True
+                        #     valign: "middle"
+                        #     halign: "center"
+                        #     text_size: self.size
 
                 # Severity Level
                 Label:
-                    text: f"SEVERITY LEVEL: {root.severity_percentage_str}"
+                    text: "SEVERITY LEVEL"
                     color: 100/255, 100/255, 100/255, 1
                     font_size: 12
                     bold: True
@@ -212,7 +259,7 @@
 
                 # Description
                 Label:
-                    text: root.disease_description
+                    text: "This image shows a 100% healthy mango leaf, free from anthracnose and any other diseases. The leaf displays a vibrant green color, smooth surface, and uniform texture—representing the ideal standard for a healthy, disease-free mango leaf."
                     color: 0, 0, 0, 1
                     font_size: 18
                     size_hint: 1, None
@@ -240,8 +287,7 @@
                         text_size: self.width, None
 
                     Label:
-                        # --- FIX 2 APPLIED HERE ---
-                        text: root.scan_timestamp
+                        text: "December 1, 2025"
                         color: 0, 0, 0, 1
                         font_size: 18
                         size_hint: 1, None
@@ -249,18 +295,3 @@
                         halign: "left"
                         valign: "middle"
                         text_size: self.width, None
-
-            BoxLayout:
-                orientation: 'horizontal'
-                size_hint_y: None
-                height: 50
-                spacing: 20
-
-                RoundedButton:
-                    text: "Retake"
-                    on_release: root.go_back()
-
-                RoundedButton:
-                    id: save_button
-                    text: "Save"
-                    on_release: app.root.current = 'save'
