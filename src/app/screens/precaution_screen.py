@@ -1,4 +1,5 @@
 from kivy.uix.screenmanager import Screen
+from app.theme import apply_background, COLORS, FONTS
 
 class PrecautionScreen(Screen):
     description_text = (
@@ -20,3 +21,10 @@ class PrecautionScreen(Screen):
         "maintenance not only enhance detection reliability but also extend the system’s lifespan, ensuring "
         "consistent and safe operation for both research and field applications."
     )
+
+    def on_pre_enter(self, *args):
+        # Apply unified background styling for visual regression alignment.
+        try:
+            apply_background(self, 'bg_primary')
+        except Exception:
+            pass

@@ -1,0 +1,86 @@
+from .image_selection import ImageSelection as ImageSelectionScreen
+
+# Provide the expected class name for tests that import
+# `src.app.screens.image_selection_screen.ImageSelectionScreen`.
+
+__all__ = ['ImageSelectionScreen']
+from kivy.app import App
+from kivy.uix.screenmanager import Screen
+from kivy.properties import StringProperty, ObjectProperty
+from kivy.clock import Clock
+from kivy.lang import Builder
+import os
+from app.theme import apply_background
+
+from .image_selection import RecycleViewImage
+
+class ImageSelectionScreen(Screen):
+    """
+    Displays a grid of scanned images for a specific tree.
+    """
+    tree_name = StringProperty("Scans")
+
+    def on_enter(self, *args):
+        """
+        Called when the screen is entered. Fetches and displays scans
+        for the selected tree.
+        """
+        try:
+            # Apply background once per entry for regression consistency.
+            apply_background(self, 'bg_primary')
+        except Exception:
+            pass
+        app = App.get_running_app()
+        tree_id = getattr(app, 'selected_tree_id', None)
+
+        if tree_id is None:
+            print("Error: No tree_id found. Returning to records screen.")
+            self.manager.current = 'records'
+            return
+
+        # Fetch scans for the given tree_id (wait for db_manager if needed)
+        from app.core.utils import call_when_db_ready
+
+        def _call_fetch():
+            app.db_manager.get_records_for_tree_async(
+                tree_id,
+                on_success_callback=self.populate_image_grid,
+                on_error_callback=lambda msg: print(f"Error fetching scans: {msg}")
+            )
+
+        call_when_db_ready(_call_fetch)
+
+    def populate_image_grid(self, records_data):
+        """
+        Populates the RecycleView with data from the fetched records.
+        `records_data` is a list of dictionaries, where the first element
+        is the list of records and the second is the tree name.
+        """
+        records, tree_name = records_data
+        self.tree_name = tree_name if tree_name else "Scans"
+        
+        rv = self.ids.image_rv
+
+        # The data for the RecycleView is a list of dictionaries.
+        # Each dictionary's keys will be mapped to the properties of the viewclass (RecycleViewImage).
+        # We also add an on_release event to each item.
+        rv.data = [
+            {'record_data': record, 'source': record['image_path'], 'on_release': lambda r=record: self.view_record_details(r)}
+            for record in records
+        ]
+        rv.refresh_from_data()
+
+    def view_record_details(self, record_data):
+        """
+        Navigates to the ResultScreen to show details for the selected scan.
+        """
+        app = App.get_running_app()
+        record_id = record_data.get('id')
+
+        if record_id is None:
+            print("Error: Clicked record is missing an 'id'. Cannot view details.")
+            return
+
+        # Pass only the record_id; tests expect no extra keys here.
+        app.analysis_result = {'record_id': record_id}
+        self.manager.current = 'result'

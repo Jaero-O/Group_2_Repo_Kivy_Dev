@@ -6,10 +6,9 @@ from .share_screen import ShareScreen
 from .help_screen import HelpScreen
 from .guide_screen import GuideScreen
 from .scanning_screen import ScanningScreen
-from .capture_result_screen import CaptureResultScreen
 from .result_screen import ResultScreen
 from .save_screen import SaveScreen
-from .image_selection import ImageSelection
+from .image_selection import ImageSelection as ImageSelectionScreen
 from .anthracnose_screen import AnthracnoseScreen
 from .system_spec_screen import SystemSpecScreen
 from .precaution_screen import PrecautionScreen

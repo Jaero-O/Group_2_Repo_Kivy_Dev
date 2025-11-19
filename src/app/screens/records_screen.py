@@ -1,4 +1,5 @@
 from kivy.uix.screenmanager import Screen
+from kivy.app import App
 from kivy.properties import ObjectProperty, BooleanProperty, StringProperty
 from kivy.animation import Animation
 from kivy.uix.boxlayout import BoxLayout
@@ -94,44 +95,96 @@ class RecordTreeItem(ButtonBehavior, BoxLayout):
     is_selected = BooleanProperty(False)
 
 
+from app.theme import apply_background, COLORS, FONTS
+
 class RecordsScreen(Screen):
     selected_tree = ObjectProperty(None, rebind=True)
     active_card = ObjectProperty(None, allownone=True)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Initialize internal lists to make methods safe when called
+        # outside of full KV-driven app lifecycle (unit tests).
+        self.trees = []
+        self.filtered_trees = []
+
     def on_pre_enter(self, *args):
-        self.build_tree_list()
+        # Schedule fetch of trees (mirrors prior behavior and allows tests
+        # to call _fetch_trees directly).
+        Clock.schedule_once(self._fetch_trees, 0)
+        # Apply themed background
+        apply_background(self, 'bg_primary')
+        try:
+            if 'records_heading' in self.ids:
+                self.ids.records_heading.color = COLORS['text_primary']
+                self.ids.records_heading.font_size = FONTS['heading_size']
+            if 'records_subheading' in self.ids:
+                self.ids.records_subheading.color = COLORS['text_secondary']
+                self.ids.records_subheading.font_size = FONTS['body_size']
+        except Exception:
+            pass
 
     def build_tree_list(self):
         tree_list = self.ids.tree_list
         tree_list.clear_widgets()
-        self.trees = ["Kenny Tree", "Jae Tree", "Lei Tree", "Kenny Tree", "Jae Tree", "Lei Tree"]
-        self.filtered_trees = self.trees.copy()
-        
-        # Hide action buttons initially
-        self.ids.action_buttons.opacity = 0
-        self.ids.action_buttons.disabled = True
-        
-        for name in self.trees:
-            self.add_tree_item(name)
+        # Populate the list from the database. Use the existing
+        # _fetch_trees method which calls the DB manager and will
+        # invoke `populate_trees_list` with results.
+        # Hide action buttons initially (if present)
+        try:
+            self.ids.action_buttons.opacity = 0
+            self.ids.action_buttons.disabled = True
+        except Exception:
+            pass
+
+        # Trigger a DB-backed refresh if the running App provides a DB manager.
+        # Otherwise, ensure the UI shows an empty state instead of any
+        # previously hardcoded placeholders.
+        try:
+            app = App.get_running_app()
+        except Exception:
+            app = None
+
+        if app and hasattr(app, 'db_manager') and app.db_manager is not None:
+            self._fetch_trees(0)
+        else:
+            # No DB available in this context (unit tests or isolated usage).
+            # Clear widgets and show empty label so the screen isn't static.
+            try:
+                self.ids.tree_list.clear_widgets()
+                from kivy.uix.label import Label
+                lbl = Label(text="No records found.")
+                self.ids.tree_list.add_widget(lbl)
+            except Exception:
+                # If ids aren't available, just update the internal lists.
+                self.trees = []
+                self.filtered_trees = []
 
     def add_tree_item(self, name):
+        # Name may be a dict from DB or a plain string
+        tree_name = name['name'] if isinstance(name, dict) else name
         # Create card
-        box = RecordTreeItem(tree_name=name)
+        box = RecordTreeItem(tree_name=tree_name)
         
         # Set up initial canvas with border
-        from kivy.graphics import Color, RoundedRectangle, Line
-        with box.canvas.before:
-            box.bg_color = Color(255/255, 255/255, 255/255, 1)
-            box.bg_rect = RoundedRectangle(
-                pos=box.pos,
-                size=box.size,
-                radius=[11]
-            )
-            box.border_color = Color(0, 0, 0, 0.1)
-            box.border = Line(
-                rounded_rectangle=(box.x, box.y, box.width, box.height, 11),
-                width=1
-            )
+        # Graphics operations can fail in headless/unit-test environments.
+        try:
+            from kivy.graphics import Color, RoundedRectangle, Line
+            with box.canvas.before:
+                box.bg_color = Color(255/255, 255/255, 255/255, 1)
+                box.bg_rect = RoundedRectangle(
+                    pos=box.pos,
+                    size=box.size,
+                    radius=[11]
+                )
+                box.border_color = Color(0, 0, 0, 0.1)
+                box.border = Line(
+                    rounded_rectangle=(box.x, box.y, box.width, box.height, 11),
+                    width=1
+                )
+        except Exception:
+            # If drawing primitives are unavailable, continue without them.
+            pass
         
         box.bind(
             pos=lambda w, v: self.update_card_graphics(w),
@@ -142,8 +195,9 @@ class RecordsScreen(Screen):
         content_box = BoxLayout(orientation='horizontal', spacing=10)
         
         # Tree name label
+        display_name = tree_name
         label = Label(
-            text=name,
+            text=display_name,
             color=(56/255, 73/255, 38/255, 1),
             font_size=18,
             bold=True,
@@ -168,7 +222,14 @@ class RecordsScreen(Screen):
             background_color=(0, 0, 0, 0),
             bold=False
         )
-        view_button.bind(on_release=lambda btn: self.navigate_to_image_selection(box))
+        # If the original `name` arg was a DB dict (contains 'id'), pass it
+        # to `view_tree_scans` so the ImageSelection screen can fetch records
+        # by tree id. If `name` is just a string (no id), fall back to
+        # navigate_to_image_selection which preserves existing behavior.
+        if isinstance(name, dict) and 'id' in name:
+            view_button.bind(on_release=lambda btn, t=name: self.view_tree_scans(t))
+        else:
+            view_button.bind(on_release=lambda btn: self.navigate_to_image_selection(box))
         content_box.add_widget(view_button)
         
         box.add_widget(content_box)
@@ -182,6 +243,72 @@ class RecordsScreen(Screen):
         # Fade-in
         box.opacity = 0
         Animation(opacity=1, duration=0.3, t='out_quad').start(box)
+
+    # --- Methods required by unit tests ---
+    def _fetch_trees(self, dt):
+        app = App.get_running_app()
+        app.db_manager.get_all_trees_async(on_success_callback=self.populate_trees_list)
+
+    def populate_trees_list(self, trees):
+        # Expecting a list of dicts: [{'id':..,'name':..}, ...]
+        # UI updates must run on the main Kivy thread. This method can be
+        # invoked from background threads (Database callbacks), so schedule
+        # the actual widget work on the main loop.
+        self.trees = trees
+
+        def _ui_update(dt):
+            try:
+                self.ids.tree_list.clear_widgets()
+            except Exception:
+                # If ids or tree_list aren't available in this context,
+                # skip UI work.
+                return
+
+            if not trees:
+                from kivy.uix.label import Label
+                lbl = Label(text="No records found.")
+                self.ids.tree_list.add_widget(lbl)
+                return
+
+            for t in trees:
+                self.add_tree_item(t)
+
+        # If we're on the main thread, run UI updates synchronously so tests
+        # that call the DB in synchronous mode see immediate results. If
+        # we're on a background thread (normal app runtime), schedule the
+        # update on the main Kivy loop to avoid graphics-thread errors.
+        import threading
+        if threading.current_thread().name == 'MainThread':
+            _ui_update(0)
+        else:
+            try:
+                Clock.schedule_once(_ui_update, 0)
+            except Exception:
+                # As a last resort, call synchronously
+                _ui_update(0)
+
+    def filter_and_populate(self, all_trees, search_text):
+        # Accept list of dicts and filter by their 'name' field.
+        filtered = [t for t in all_trees if search_text in (t['name'].lower() if isinstance(t, dict) else str(t).lower())]
+        self.populate_trees_list(filtered)
+
+    def view_tree_scans(self, tree):
+        app = App.get_running_app()
+        app.selected_tree_id = tree['id']
+        self.manager.current = 'image_selection'
+
+    def on_add_tree(self):
+        # Read from input and create via DB manager
+        app = App.get_running_app()
+        name = self.ids.add_input.text.strip()
+        if not name:
+            return
+
+        def _on_added(result):
+            # after adding, refresh list
+            self._fetch_trees(0)
+
+        app.db_manager.add_tree_async(name, on_success_callback=_on_added)
 
     def on_card_click(self, card):
         """Handle card selection"""
@@ -226,13 +353,23 @@ class RecordsScreen(Screen):
 
     def show_action_buttons(self):
         """Animate showing action buttons"""
-        self.ids.action_buttons.disabled = False
-        Animation(opacity=1, duration=0.2, t='out_quad').start(self.ids.action_buttons)
+        if 'action_buttons' not in self.ids:
+            return
+        try:
+            self.ids.action_buttons.disabled = False
+            Animation(opacity=1, duration=0.2, t='out_quad').start(self.ids.action_buttons)
+        except Exception:
+            pass
 
     def hide_action_buttons(self):
         """Animate hiding action buttons"""
-        Animation(opacity=0, duration=0.2, t='out_quad').start(self.ids.action_buttons)
-        Clock.schedule_once(lambda dt: setattr(self.ids.action_buttons, 'disabled', True), 0.2)
+        if 'action_buttons' not in self.ids:
+            return
+        try:
+            Animation(opacity=0, duration=0.2, t='out_quad').start(self.ids.action_buttons)
+            Clock.schedule_once(lambda dt: setattr(self.ids.action_buttons, 'disabled', True), 0.2)
+        except Exception:
+            pass
 
     def on_edit_button(self):
         """Handle edit button click"""
@@ -340,21 +477,9 @@ class RecordsScreen(Screen):
     def navigate_to_image_selection(self, card):
         """Navigate to image selection screen"""
         self.selected_tree = card.tree_name
-        self.manager.current = 'image_select'
+        self.manager.current = 'image_selection'
 
-    def on_add_tree(self):
-        """Add new tree entry"""
-        new_name = self.ids.add_input.text.strip()
-        if new_name:
-            if new_name in self.trees:
-                self.show_notification(f"'{new_name}' already exists!")
-                return
-            
-            self.trees.append(new_name)
-            self.filtered_trees.append(new_name)
-            self.add_tree_item(new_name)
-            self.ids.add_input.text = ''
-            self.show_notification(f"'{new_name}' added successfully!")
+    # NOTE: on_add_tree uses the DB-backed implementation defined earlier
 
     def on_search_text(self, text):
         """Filter tree list based on search text"""
@@ -364,7 +489,7 @@ class RecordsScreen(Screen):
         search_text = text.lower().strip()
         
         if search_text:
-            self.filtered_trees = [t for t in self.trees if search_text in t.lower()]
+            self.filtered_trees = [t for t in self.trees if search_text in (t['name'].lower() if isinstance(t, dict) else str(t).lower())]
         else:
             self.filtered_trees = self.trees.copy()
         
