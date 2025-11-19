@@ -48,8 +48,7 @@
                 padding: [0, 10, 0, 6]
                 Image:
                     source: "app/assets/result.png"
-                    allow_stretch: True
-                    keep_ratio: True
+                    fit_mode: "contain"
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
                     mipmap: True
@@ -104,8 +103,7 @@
                 padding: [0, 15, 0, 8]
                 Image:
                     source: "app/assets/scan2.png"
-                    allow_stretch: True
-                    keep_ratio: True
+                    fit_mode: "contain"
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
                     mipmap: True
@@ -159,8 +157,7 @@
                 padding: [0, 10, 0, 6]
                 Image:
                     source: "app/assets/save.png"
-                    allow_stretch: True
-                    keep_ratio: True
+                    fit_mode: "contain"
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
                     mipmap: True
@@ -173,3 +170,63 @@
                     halign: "center"
                     valign: "middle"
                     text_size: self.size
+
+    # Processed LCD Preview (shows normalized resized image if available)
+    Image:
+        id: lcd_preview
+        size_hint: None, None
+        size: 240, 400
+        pos_hint: {"center_x": 0.5, "center_y": 0.55}
+        fit_mode: "contain"
+        source: app.lcd_display_image_path if hasattr(app, 'lcd_display_image_path') and app.lcd_display_image_path else (app.processed_image_path if hasattr(app, 'processed_image_path') and app.processed_image_path else (app.analysis_image_path if hasattr(app, 'analysis_image_path') else ''))
+        canvas.before:
+            Color:
+                rgba: 1,1,1,0.15
+            RoundedRectangle:
+                pos: self.x-6, self.y-6
+                size: self.width+12, self.height+12
+                radius: [20,20,20,20]
+        canvas.after:
+            Color:
+                rgba: 0,0,0,0.25
+            Line:
+                rounded_rectangle: (self.x-6, self.y-6, self.width+12, self.height+12, 20)
+
+    # Severity Legend
+    BoxLayout:
+        id: severity_legend
+        orientation: 'horizontal'
+        size_hint: None, None
+        size: 540, 40
+        pos_hint: {"center_x": 0.5, "y": 0.47}
+        spacing: 10
+        canvas.before:
+            Color:
+                rgba: 1,1,1,0.22
+            RoundedRectangle:
+                pos: self.x, self.y
+                size: self.width, self.height
+                radius: [16,16,16,16]
+        Label:
+            text: 'Severity Scale:'
+            font_size: 16
+            bold: True
+            color: 0,0,0,1
+            size_hint_x: None
+            width: self.texture_size[0] + 20
+        Label:
+            text: 'Healthy < 10%'
+            font_size: 15
+            color: 0,0.4,0,1
+        Label:
+            text: 'Mild 10–30%'
+            font_size: 15
+            color: 0.35,0.35,0,1
+        Label:
+            text: 'Moderate 30–60%'
+            font_size: 15
+            color: 0.55,0.28,0,1
+        Label:
+            text: 'Severe > 60%'
+            font_size: 15
+            color: 0.7,0,0,1

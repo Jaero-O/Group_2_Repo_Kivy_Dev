@@ -63,8 +63,7 @@
             size_hint: None, None
             size: 253, 253
             pos_hint: {"center_x": 0.5, "y": 0.12}
-            allow_stretch: True
-            keep_ratio: True
+            fit_mode: "contain"
 
     # Header Section
     BoxLayout:
@@ -79,8 +78,7 @@
             source: "app/assets/share.png"
             size_hint: None, None
             size: 35, 35
-            allow_stretch: True
-            keep_ratio: True
+            fit_mode: "contain"
             color: 6/255, 87/255, 6/255, 1
             mipmap: True
 
@@ -120,8 +118,7 @@
 
             Image:
                 source: "app/assets/back.png"
-                allow_stretch: True
-                keep_ratio: True
+                fit_mode: "contain"
                 size_hint: None, None
                 size: 20, 20
                 pos_hint: {"center_y": 0.5}

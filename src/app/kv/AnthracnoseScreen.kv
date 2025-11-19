@@ -22,8 +22,7 @@
             source: "app/assets/leaf_2.png"
             size_hint: None, None
             size: 35, 35
-            allow_stretch: True
-            keep_ratio: True
+            fit_mode: "contain"
             mipmap: True
 
     BoxLayout:
@@ -62,8 +61,7 @@
 
             Image:
                 source: "app/assets/back.png"
-                allow_stretch: True
-                keep_ratio: True
+                fit_mode: "contain"
                 size_hint: None, None
                 size: 20, 20
                 pos_hint: {"center_y": 0.5}

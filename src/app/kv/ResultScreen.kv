@@ -1,297 +1,111 @@
 #:kivy 2.0.0
 
 <ResultScreen>:
-    canvas.before:
-        # Main background color and texture
-        Color:
-            rgba: 248/255, 248/255, 248/255, 1
-        Rectangle:
-            pos: self.pos
-            size: self.size
-
-    # Header Section (Fixed at top)
     BoxLayout:
-        orientation: "horizontal"
-        size_hint: None, None
-        height: 50
-        width: self.parent.width
-        pos_hint: {"x": 0.06, "y": 0.92}
-        spacing: 5.3
-        valign: "left"
+        orientation: 'vertical'
+        padding: 12
+        spacing: 12
 
-        Image:
-            source: "app/assets/result.png"
-            size_hint: None, None
-            size: 35, 35
-            allow_stretch: True
-            keep_ratio: True
-            color: (6/255, 87/255, 6/255, 1)
-            mipmap: True
+        BoxLayout:
+            size_hint_y: None
+            height: 48
+            spacing: 8
+            Button:
+                text: 'Back'
+                size_hint_x: None
+                width: 80
+                on_release: root.go_back()
+            Label:
+                text: 'Result'
+                font_size: 28
+                bold: True
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
+            Widget:
+                size_hint_x: 1
 
-    BoxLayout:
-        orientation: "horizontal"
-        size_hint: None, None
-        height: 50
-        width: self.parent.width
-        pos_hint: {"x": 0.17, "y": 0.91}
-        spacing: 5.3
-        valign: "left"
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: 200
+            spacing: 12
+            Image:
+                id: preview_image
+                source: '' if (__import__('os').environ.get('HEADLESS_TEST') == '1') else root.image_path
+                fit_mode: "contain"
+            BoxLayout:
+                orientation: 'vertical'
+                spacing: 4
+                Label:
+                    text: 'Disease: ' + (root.disease_name if root.disease_name else '—')
+                    font_size: 16
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                Label:
+                    text: 'Severity: ' + (str(int(root.severity_percentage)) + '%' if root.severity_percentage else '0%')
+                    font_size: 16
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                Label:
+                    text: 'Stage: ' + (root.severity_name if root.severity_name else 'Healthy')
+                    font_size: 16
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+                BoxLayout:
+                    id: confidence_layout
+                    size_hint_y: None
+                    height: 24
+                    Label:
+                        text: 'Confidence: ' + (str(int(root.confidence*100)) + '%' if root.confidence else '0%')
+                        font_size: 14
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
 
         Label:
-            text: "Result"
-            color: 3/255, 30/255, 0/255, 1
-            font_size: 32
-            bold: True
-            valign: "middle"
-            halign: "left"
-            text_size: self.size
-
-    # Back Button (Fixed at top)
-    RoundedButton:
-        id: back_button
-        size_hint: None, None
-        size: 100, 36
-        pos_hint: {"x": 0.79, "y": 0.915}
-        on_release: root.go_back()
-
-        BoxLayout:
-            orientation: "horizontal"
-            size: self.size
-            spacing: 6
-            padding: [0, 0, 0, 0]
-            pos_hint: {"center_y": 0.5}
-            size: back_button.size
-            pos: back_button.pos
-
-            Image:
-                source: "app/assets/back.png"
-                allow_stretch: True
-                keep_ratio: True
-                size_hint: None, None
-                size: 20, 20
-                pos_hint: {"center_y": 0.5}
-                mipmap: True
-
-            Label:
-                text: "Back"
-                color: 3/255, 30/255, 0/255, 1
-                font_size: 16
-                bold: True
-                size_hint_x: None
-                width: self.texture_size[0]
-                halign: "left"
-                valign: "middle"
-                pos_hint: {"center_y": 0.5}
-
-    # Scrollable Content Area
-    ScrollView:
-        size_hint: 1, None
-        height: root.height * 0.85
-        pos_hint: {"center_x": 0.5, "y": 0.0}
-        do_scroll_x: False
-        do_scroll_y: True
-        scroll_type: ['bars', 'content']
-        bar_width: 8
-        bar_color: 0.5, 0.5, 0.5, 0.7
-        bar_inactive_color: 0.5, 0.5, 0.5, 0.3
-
-        BoxLayout:
-            orientation: "vertical"
+            id: dynamic_description
+            text: root.disease_description if root.disease_description else 'No description available.'
+            font_size: 14
+            halign: 'left'
+            valign: 'top'
+            text_size: self.width, None
             size_hint_y: None
-            height: self.minimum_height
-            padding: [30, 20, 30, 30]
-            spacing: 30
+            height: self.texture_size[1] + 8
 
-            # Image Display Area
-            FloatLayout:
-                size_hint: 1, None
-                height: 300
+        BoxLayout:
+            id: severity_legend
+            size_hint_y: None
+            height: 26
+            spacing: 10
+            Label:
+                text: 'Healthy'
+                font_size: 12
+            Label:
+                text: 'Mild'
+                font_size: 12
+            Label:
+                text: 'Moderate'
+                font_size: 12
+            Label:
+                text: 'Severe'
+                font_size: 12
 
-                # Shadow
-                canvas.before:
-                    Color:
-                        rgba: 0, 0, 0, 0.15
-                    RoundedRectangle:
-                        pos: self.x + 2.6, self.y - 3.1
-                        size: self.size
-                        radius: [15, 15, 15, 15]
-
-                # Background
-                canvas:
-                    Color:
-                        rgba: 0.93, 0.95, 0.93, 1
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [15, 15, 15, 15]
-
-            # Result Details Section
-            BoxLayout:
-                orientation: "vertical"
-                size_hint: 1, None
-                height: self.minimum_height
-                spacing: 15
-                padding: [0, 0, 0, 0]
-
-                # Percentage and Tag Row
-                BoxLayout:
-                    orientation: "horizontal"
-                    size_hint: 1, None
-                    height: 80
-                    spacing: 10
-
-                    # Healthy Percentage
-                    Label:
-                        text: "100%"
-                        color: (38/255, 164/255, 33/255, 1)
-                        font_size: 64
-                        bold: True
-                        size_hint_x: None
-                        width: self.texture_size[0]
-                        halign: "left"
-                        valign: "middle"
-
-                    # Moderate Percentage
-                    # Label:
-                    #     text: "67%"
-                    #     color: 207/255, 191/255, 44/255, 1
-                    #     font_size: 64
-                    #     bold: True
-                    #     size_hint: None, None
-                    #     size: self.texture_size
-                    #     pos_hint: {"x": 0.0, "y": 0.90}   
-
-                    # Anthracnose Percentage
-                    # Label:
-                    #     text: "15%"
-                    #     color: 221/255, 45/255, 29/255, 1
-                    #     font_size: 64
-                    #     bold: True
-                    #     size_hint: None, None
-                    #     size: self.texture_size
-                    #     pos_hint: {"x": 0.0, "y": 0.90}
-
-                    Widget:
-                        size_hint_x: 1
-
-                    BoxLayout:
-                        size_hint: None, None
-                        size: 140, 30
-                        pos_hint: {"center_y": 0.8}
-                    
-                        # Healthy Tag
-                        canvas.before:
-                            Color:
-                                rgba: 201/255, 255/255, 142/255, 1
-                            RoundedRectangle:
-                                pos: self.pos
-                                size: self.size
-                                radius: [8]
-
-                        Label:
-                            text: "HEALTHY"
-                            color: 0/255, 82/255, 0/255, 1
-                            font_size: 16
-                            bold: True
-                            valign: "middle"
-                            halign: "center"
-                            text_size: self.size
-                        
-                        # Moderate Tag
-                        # canvas.before:
-                        #     Color:
-                        #         rgba: 255/255, 246/255, 149/255, 1
-                        #     RoundedRectangle:
-                        #         pos: self.pos
-                        #         size: self.size
-                        #         radius: [8]
-
-                        # Label:
-                        #     text: "Moderate"
-                        #     color: 99/255, 91/255, 1/255, 1
-                        #     font_size: 16
-                        #     bold: True
-                        #     valign: "middle"
-                        #     halign: "center"
-                        #     text_size: self.size
-                        
-                        # Anthracnose Tag
-                        # canvas.before:
-                        #     Color:
-                        #         rgba: 255/255, 180/255, 168/255, 1
-                        #     RoundedRectangle:
-                        #         pos: self.pos
-                        #         size: self.size
-                        #         radius: [8]
-
-                        # Label:
-                        #     text: "ANTHRACNOSE"
-                        #     color: 150/255, 22/255, 3/255, 1
-                        #     font_size: 16
-                        #     bold: True
-                        #     valign: "middle"
-                        #     halign: "center"
-                        #     text_size: self.size
-
-                # Severity Level
-                Label:
-                    text: "SEVERITY LEVEL"
-                    color: 100/255, 100/255, 100/255, 1
-                    font_size: 12
-                    bold: True
-                    size_hint: 1, None
-                    height: self.texture_size[1]
-                    halign: "left"
-                    valign: "middle"
-                    text_size: self.width, None
-
-                # Leaf Data Header
-                Label:
-                    text: "Leaf Data"
-                    color: 0, 0, 0, 1
-                    font_size: 18
-                    bold: True
-                    size_hint: 1, None
-                    height: self.texture_size[1] + 10
-                    halign: "left"
-                    valign: "middle"
-                    text_size: self.width, None
-
-                # Description
-                Label:
-                    text: "This image shows a 100% healthy mango leaf, free from anthracnose and any other diseases. The leaf displays a vibrant green color, smooth surface, and uniform texture—representing the ideal standard for a healthy, disease-free mango leaf."
-                    color: 0, 0, 0, 1
-                    font_size: 18
-                    size_hint: 1, None
-                    height: self.texture_size[1] + 20
-                    halign: "left"
-                    valign: "top"
-                    text_size: self.width, None
-
-                # Date Section
-                BoxLayout:
-                    orientation: "vertical"
-                    size_hint: 1, None
-                    height: self.minimum_height
-                    spacing: 8
-
-                    Label:
-                        text: "Date Scanned"
-                        color: 0, 0, 0, 1
-                        font_size: 18
-                        bold: True
-                        size_hint: 1, None
-                        height: self.texture_size[1]
-                        halign: "left"
-                        valign: "middle"
-                        text_size: self.width, None
-
-                    Label:
-                        text: "December 1, 2025"
-                        color: 0, 0, 0, 1
-                        font_size: 18
-                        size_hint: 1, None
-                        height: self.texture_size[1]
-                        halign: "left"
-                        valign: "middle"
-                        text_size: self.width, None
+        BoxLayout:
+            size_hint_y: None
+            height: 48
+            Widget:
+                size_hint_x: 1
+            Button:
+                id: save_button
+                text: 'Save'
+                size_hint: None, None
+                size: 120, 40
+                disabled: not root.is_scan_result
+                opacity: 1 if root.is_scan_result else 0
+                on_release: root.open_save_screen()
+            Widget:
+                size_hint_x: 1

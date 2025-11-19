@@ -9,9 +9,86 @@
             pos: self.pos
             size: self.size
 
-    Label:
-        text: "Scanning..."
-        font_size: 36
-        bold: True
-        color: 0, 0, 0, 1
-        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: 1, 1
+        padding: 0, 140, 0, 0
+        spacing: 28
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: 260
+            padding: 30,0,30,0
+            spacing: 40
+            Image:
+                id: thumbnail_preview
+                size_hint: None, None
+                size: 240, 240
+                fit_mode: "contain"
+                source: app.analysis_image_path if hasattr(app, 'analysis_image_path') and app.analysis_image_path else ''
+                canvas.before:
+                    Color:
+                        rgba: 1,1,1,0.18
+                    RoundedRectangle:
+                        pos: self.x-6, self.y-6
+                        size: self.width+12, self.height+12
+                        radius: [18,18,18,18]
+            BoxLayout:
+                orientation: 'vertical'
+                spacing: 16
+                Label:
+                    id: placeholder_banner
+                    text: 'Camera unavailable – using sample image' if (hasattr(app, 'analysis_image_path') and app.analysis_image_path and 'placeholder' in app.analysis_image_path) else ''
+                    font_size: 18
+                    color: 0.2,0,0,1
+                    bold: True
+                    size_hint_y: None
+                    height: self.texture_size[1] + 6
+                Label:
+                    id: progress_label
+                    text: 'Preparing analysis...'
+                    font_size: 30
+                    bold: True
+                    color: 0, 0, 0, 1
+                    size_hint_y: None
+                    height: self.texture_size[1] + 10
+                    halign: 'center'
+                    valign: 'middle'
+                    text_size: self.width, None
+                ProgressBar:
+                    id: progress_bar
+                    max: 100
+                    value: 5
+                    size_hint: 1, None
+                    height: 22
+                    canvas.before:
+                        Color:
+                            rgba: 0,0,0,0.15
+                        RoundedRectangle:
+                            pos: self.x-4, self.y-4
+                            size: self.width+8, self.height+8
+                            radius: [10,10,10,10]
+                Label:
+                    id: fallback_warning
+                    text: ''
+                    font_size: 16
+                    color: 0.5,0,0,1
+                    size_hint_y: None
+                    height: self.texture_size[1] + 4
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: 70
+            spacing: 40
+            padding: 0,0,0,0
+            Button:
+                id: cancel_button
+                text: 'Cancel'
+                size_hint: None, None
+                size: 140, 54
+                on_release: root.cancel_analysis()
+                background_normal: ''
+                background_color: 0.8,0.15,0.15,1
+                color: 1,1,1,1
+                font_size: 20
+                bold: True

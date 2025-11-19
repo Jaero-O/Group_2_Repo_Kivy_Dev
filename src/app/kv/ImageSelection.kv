@@ -22,8 +22,7 @@
             source: "app/assets/records.png"
             size_hint: None, None
             size: 35, 35
-            allow_stretch: True
-            keep_ratio: True
+            fit_mode: "contain"
             color: 6/255, 87/255, 6/255, 1
             mipmap: True
 
@@ -63,8 +62,7 @@
 
             Image:
                 source: "app/assets/back.png"
-                allow_stretch: True
-                keep_ratio: True
+                fit_mode: "contain"
                 size_hint: None, None
                 size: 20, 20
                 pos_hint: {"center_y": 0.5}
@@ -82,107 +80,21 @@
                 pos_hint: {"center_y": 0.5}
 
 
-    # Image Gallery Section
-    ScrollView:
+    # Image Gallery Section (shows only scanned images via RecycleView)
+    RecycleView:
+        id: image_rv
+        viewclass: 'RecycleViewImage'
         size_hint: (1, None)
         height: root.height * 0.82
         pos_hint: {"x": 0, "y": 0.04}
-        bar_width: 8
-        do_scroll_x: False
 
-        GridLayout:
-            id: image_grid
+        RecycleGridLayout:
             cols: 3
-            spacing: [2, 2]
-            padding: [0, 0, 0, 0]
+            default_size: None, dp(133)
+            default_size_hint:  None, None
             size_hint_y: None
             height: self.minimum_height
-
-            # 21 placeholder images
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
+            spacing: [2, 2]
 
     # Filter Bar Sectiom
     FloatLayout:

@@ -42,8 +42,7 @@
             source: "app/assets/guide.png"
             size_hint: None, None
             size: 48, 48
-            allow_stretch: True
-            keep_ratio: True
+            fit_mode: "contain"
             mipmap: True
 
     # Header label
@@ -148,8 +147,7 @@
 
             Image:
                 source: "app/assets/back.png"
-                allow_stretch: True
-                keep_ratio: True
+                fit_mode: "contain"
                 size_hint: None, None
                 size: 17, 17
                 pos_hint: {"center_y": 0.5}

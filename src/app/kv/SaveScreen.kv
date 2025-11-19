@@ -42,8 +42,7 @@
             source: "app/assets/save.png"
             size_hint: None, None
             size: 48, 48
-            allow_stretch: True
-            keep_ratio: True
+            fit_mode: "contain"
             mipmap: True
 
     BoxLayout:
@@ -111,10 +110,55 @@
             source: "app/assets/search.png"
             size_hint: None, None
             size: 17, 17
-            allow_stretch: True
-            keep_ratio: True
+            fit_mode: "contain"
             pos_hint: {"center_y": 0.5}
             mipmap: True
+
+    # Preview area (thumbnail + metadata populated from app.analysis_result)
+    BoxLayout:
+        orientation: 'horizontal'
+        size_hint: None, None
+        size: 320, 110
+        pos_hint: {"center_x": 0.5, "top": 0.62}
+        spacing: 12
+
+        Image:
+            id: thumbnail_image
+            source: ''
+            size_hint: None, None
+            size: 100, 100
+            fit_mode: "contain"
+            mipmap: True
+
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: 4
+            size_hint_x: 1
+
+            Label:
+                id: save_disease_label
+                text: ''
+                font_size: 18
+                bold: True
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
+
+            Label:
+                id: save_confidence_label
+                text: ''
+                font_size: 14
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
+
+            Label:
+                id: save_severity_label
+                text: ''
+                font_size: 14
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
 
     # Save area
     BoxLayout:
@@ -186,6 +230,31 @@
                 color: 79/255, 79/255, 79/255, 1
                 bold: True
                 on_release: root.on_add_tree()
+
+        # Editable fields for saving metadata (prefilled from analysis_result)
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint_y: None
+            height: 124
+            spacing: 6
+
+            TextInput:
+                id: record_title
+                hint_text: 'Leaf name (optional)'
+                hint_text_color: 166/255, 166/255, 166/255, 1
+                font_size: 14
+                multiline: False
+                padding: [12, 10, 12, 10]
+
+            TextInput:
+                id: record_notes
+                hint_text: 'Notes (optional)'
+                hint_text_color: 166/255, 166/255, 166/255, 1
+                font_size: 14
+                multiline: True
+                size_hint_y: None
+                height: 70
+                padding: [12, 10, 12, 10]
 
     # Save button
     RoundedButton:
@@ -259,8 +328,7 @@
 
             Image:
                 source: "app/assets/back.png"
-                allow_stretch: True
-                keep_ratio: True
+                fit_mode: "contain"
                 size_hint: None, None
                 size: 17, 17
                 pos_hint: {"center_y": 0.5}

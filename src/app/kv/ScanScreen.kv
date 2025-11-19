@@ -48,8 +48,7 @@
                 padding: [0, 10, 0, 6]
                 Image:
                     source: "app/assets/cancel.png"
-                    allow_stretch: True
-                    keep_ratio: True
+                    fit_mode: "contain"
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
                     mipmap: True
@@ -69,7 +68,7 @@
         size_hint: None, None
         size: 110, 110
         pos_hint: {"center_x": 0.50, "y": 0.04}
-        on_release: app.root.current = 'scanning'  # Navigate to scanning screen
+        on_release: root.start_live_capture()  # Start live capture then navigate
 
         # Button shadow, gradient texture, and touch feedback
         canvas.before:
@@ -104,8 +103,7 @@
                 padding: [0, 15, 0, 8]
                 Image:
                     source: "app/assets/scan2.png"
-                    allow_stretch: True
-                    keep_ratio: True
+                    fit_mode: "contain"
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
                     mipmap: True
@@ -118,6 +116,30 @@
                     halign: "center"
                     valign: "middle"
                     text_size: self.size
+
+    # Camera preview area (center of the screen)
+    BoxLayout:
+        size_hint: 0.9, 0.6
+        pos_hint: {"center_x": 0.5, "center_y": 0.6}
+        canvas.before:
+            Color:
+                rgba: 1, 1, 1, 1
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [12, 12, 12, 12]
+        Image:
+            id: camera_preview
+            source: ''
+            fit_mode: "contain"
+            mipmap: True
+        Label:
+            id: preview_placeholder
+            text: 'Camera preview will appear here.'
+            color: 0.2, 0.2, 0.2, 1
+            halign: 'center'
+            valign: 'middle'
+            text_size: self.size
 
     # Guide Button
     RoundedButton:
@@ -159,8 +181,7 @@
                 padding: [0, 10, 0, 6]
                 Image:
                     source: "app/assets/guide.png"
-                    allow_stretch: True
-                    keep_ratio: True
+                    fit_mode: "contain"
                     size_hint_y: 0.65
                     pos_hint: {"center_x": 0.5}
                     mipmap: True
