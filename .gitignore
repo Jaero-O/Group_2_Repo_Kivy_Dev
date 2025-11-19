@@ -32,3 +32,12 @@ __pycache__/
 # Temporary Files
 tmp_test.*
 *.tmp
+
+# Runtime Data (generated during execution)
+screenshots/
+data/captures/
+data/processed/
+artifacts/performance/
+
+# Build artifacts
+tools/
