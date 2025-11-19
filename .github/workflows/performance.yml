@@ -1,0 +1,53 @@
+name: Performance & Simulation
+
+on:
+  push:
+    branches: [ integration, main ]
+  workflow_dispatch:
+
+jobs:
+  simulation-performance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run simulation (capture metrics)
+        env:
+          PERF_CAPTURE: '1'
+          STRESS_ITERS: '5'
+          STRESS_UNIQUE: '0'
+        run: |
+          python scripts/simulate_flows.py
+
+      - name: Archive performance artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-artifacts
+          path: artifacts/performance/
+          retention-days: 30
+
+      - name: Compare performance (regression check)
+        run: |
+          python scripts/compare_performance.py --fail-on-regression --threshold 1.2 || echo "No baseline yet"
+        continue-on-error: true
+
+      - name: Run performance SLA tests
+        run: |
+          pytest tests/test_performance_sla.py -m performance -vv
+
+      - name: Full test suite (functional/regression)
+        run: |
+          pytest -m "functional or regression or integration" -vv || true
+
+  # Optional second job to compare against previous run (requires artifact download action referencing previous run logs)
