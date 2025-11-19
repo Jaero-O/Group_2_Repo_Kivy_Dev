@@ -1,8 +1,34 @@
-Database/
-leaf-detection/models/
+# Virtual Environments
 .env/
 env/
 venv/
+.venv/
+
+# Databases
+Database/
+*.db-shm
+*.db-wal
+test.db
+test_tmp.db
+mangofy.db
+
+# Model Directories
+leaf-detection/models/
 Plant_Disease_Prediction/scripts/results/
 Plant_Disease_Prediction/data/
+
+# Logs
 results_log.txt
+*.log
+app_run*.log
+tools/*.log
+
+# Python Cache
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Temporary Files
+tmp_test.*
+*.tmp
