@@ -97,6 +97,9 @@ class MangofyApp(App):
         super().__init__(**kwargs)
         self.db_manager = None # Initialize db_manager
         logging.info("MangofyApp: __init__ complete.")
+        # Ensure analysis_result is a dict so KV expressions using .get() don't fail at startup
+        if getattr(self, 'analysis_result', None) is None:
+            self.analysis_result = {}
 
     def build(self):
         """
@@ -104,7 +107,27 @@ class MangofyApp(App):
         All heavy setup is deferred to finish_loading().
         """
         logging.info("MangofyApp: build() started.")
+        import os
+        if os.environ.get('HEADLESS_TEST') == '1':
+            # Headless test mode: return minimal ScreenManager with a stub screen to avoid KV, images, and OpenGL.
+            try:
+                _ScreenManager = ScreenManager if ScreenManager is not None else __import__('kivy.uix.screenmanager', fromlist=['ScreenManager']).ScreenManager
+                self.sm = _ScreenManager()
+                self.sm.add_widget(LoadingScreen(name='loading'))
+                logging.info("MangofyApp: headless build() returning minimal ScreenManager.")
+                return self.sm
+            except Exception as e:
+                logging.critical(f"Headless build failed: {e}")
+                return None
         try:
+            # Secondary headless guard (in case environment variable set after initial build path evaluation).
+            import os as _os_local
+            if _os_local.environ.get('HEADLESS_TEST') == '1':
+                _ScreenManager = ScreenManager if ScreenManager is not None else __import__('kivy.uix.screenmanager', fromlist=['ScreenManager']).ScreenManager
+                self.sm = _ScreenManager()
+                self.sm.add_widget(LoadingScreen(name='loading'))
+                logging.info("MangofyApp: headless (late) build guard returning minimal ScreenManager.")
+                return self.sm
             # Load the LoadingScreen KV string here
             # Resolve Builder: use patched module-level `Builder` if present,
             # otherwise fall back to the real Builder.
@@ -166,11 +189,22 @@ class MangofyApp(App):
             Window.bind(on_resize=self._update_scaling)
             self._update_scaling(Window, Window.width, Window.height)
 
-            # Add 'src' to Kivy's resource path here
-            resource_add_path(src_path)
+            # Compute project root using pathlib so tests that mock `os` don't
+            # influence the resulting path string. Use this `_project_root`
+            # value for both KV loading and the runtime DB path.
+            from pathlib import Path
+            _project_root = Path(__file__).resolve().parent
+
+            # Add src directory to Kivy resource paths for asset resolution
+            from kivy.resources import resource_add_path
+            src_dir = str(_project_root / 'src')
+            resource_add_path(src_dir)
 
             # --- DATABASE INITIALIZATION ---
-            db_path = os.path.join(self.user_data_dir, "mangofy.db")
+            # Use a project-root database file named `mangofy.db` so the
+            # application stores data next to the project rather than in
+            # a per-user directory. This file is (re)initialized each run.
+            db_path = str(_project_root / "mangofy.db")
             logging.info(f"Database path set to: {db_path}")
             self.db_manager = database.DatabaseManager(db_path=db_path)
             # Diagnostic: indicate the db_manager was created and its path
@@ -183,28 +217,78 @@ class MangofyApp(App):
             self.db_manager.initialize_database()
             logging.info("Database initialization complete.")
 
-            # --- KV FILE LOADING ---
-            # Compute project_root using pathlib so tests that mock `os` don't
-            # influence the resulting path string.
-            from pathlib import Path
-            _project_root = Path(__file__).resolve().parent
-            kv_dir = str(_project_root / 'src' / 'app' / 'kv')
-            if os.path.isdir(kv_dir):
-                for kv_file in os.listdir(kv_dir):
-                    if kv_file.endswith('.kv'):
-                        Builder.load_file(os.path.join(kv_dir, kv_file))
-                logging.info("KV files loaded.")
-            else:
-                logging.warning(f"KV directory not found: {kv_dir}")
-
-            # --- SCREEN REGISTRATION ---
+            # --- SCREEN REGISTRATION (Import classes before loading KV) ---
             # Import screen classes here (after DB manager is initialized)
             from app.screens import (
                 WelcomeScreen, HomeScreen, ScanScreen, RecordsScreen, HelpScreen,
                 GuideScreen, ScanningScreen, ResultScreen,
-                CaptureResultScreen, SaveScreen, ImageSelectionScreen,
+                SaveScreen, ImageSelectionScreen,
                 AnthracnoseScreen, SystemSpecScreen, PrecautionScreen, AboutUsScreen
             )
+            # Import widget-like classes defined in screen modules that are
+            # instantiated directly in KV (e.g., TouchableButton)
+            try:
+                from app.screens.home_screen import TouchableButton
+            except Exception:
+                TouchableButton = None
+            # Import custom widget classes used directly in KV files
+            try:
+                from app.core.widgets import RoundedButton, ScanButton, GradientScanButton
+            except Exception:
+                RoundedButton = ScanButton = GradientScanButton = None
+            # Explicitly register screen classes with Factory before KV parsing
+            try:
+                from kivy.factory import Factory as _F
+                for _cls in [WelcomeScreen, HomeScreen, ScanScreen, RecordsScreen, HelpScreen,
+                             GuideScreen, ScanningScreen, ResultScreen, SaveScreen,
+                             ImageSelectionScreen, AnthracnoseScreen, SystemSpecScreen,
+                             PrecautionScreen, AboutUsScreen]:
+                    _F.register(_cls.__name__, cls=_cls)
+                # Also register custom widgets if available so KV can instantiate them
+                for _wcls in [RoundedButton, ScanButton, GradientScanButton, TouchableButton]:
+                    if _wcls is not None:
+                        _F.register(_wcls.__name__, cls=_wcls)
+                try:
+                    _reg_keys = list(getattr(_F, 'classes', {}).keys())
+                    print(f"[DEBUG] Factory registered classes count: {len(_reg_keys)}")
+                    print(f"[DEBUG] 'HomeScreen' in Factory: {'HomeScreen' in _reg_keys}")
+                except Exception:
+                    pass
+            except Exception:
+                pass
+
+            # --- KV FILE LOADING (after screen classes are available) ---
+            kv_dir = str(_project_root / 'src' / 'app' / 'kv')
+            if os.path.isdir(kv_dir):
+                for kv_file in os.listdir(kv_dir):
+                    if not kv_file.endswith('.kv'):
+                        continue
+                    kv_path = os.path.join(kv_dir, kv_file)
+                    try:
+                        already_loaded = hasattr(Builder, 'files') and kv_path in getattr(Builder, 'files')
+                    except Exception:
+                        already_loaded = False
+                    if not already_loaded:
+                        # Robust loader: sanitize HomeScreen.kv to avoid rare parser
+                        # issues on some Windows setups; load others normally.
+                        if os.path.basename(kv_path).lower() == 'homescreen.kv':
+                            try:
+                                with open(kv_path, 'r', encoding='utf-8-sig') as f:
+                                    _src = f.read()
+                                # Ensure the first significant char begins a class rule
+                                i = 0
+                                while i < len(_src) and _src[i] not in ('<', '\n', '\r', ' ', '\t'):
+                                    i += 1
+                                if i and i < len(_src):
+                                    _src = _src[i:]
+                                Builder.load_string(_src)
+                            except Exception:
+                                Builder.load_file(kv_path)
+                        else:
+                            Builder.load_file(kv_path)
+                logging.info("KV files loaded.")
+            else:
+                logging.warning(f"KV directory not found: {kv_dir}")
 
             screens_to_load = [
                 (WelcomeScreen, 'welcome'),
@@ -214,7 +298,6 @@ class MangofyApp(App):
                 (HelpScreen, 'help'),
                 (GuideScreen, 'guide'),
                 (ScanningScreen, 'scanning'),
-                (CaptureResultScreen, 'capture_result'),
                 (ResultScreen, 'result'), (SaveScreen, 'save'),
                 (ImageSelectionScreen, 'image_selection'),
                 (AnthracnoseScreen, 'anthracnose'), (SystemSpecScreen, 'system_spec'),
@@ -243,6 +326,49 @@ class MangofyApp(App):
             # Switch from 'loading' to the actual first screen
             self.sm.current = 'welcome'
             logging.info("Startup complete. Switching to 'welcome' screen.")
+
+            # --- OPTIONAL: AUTOMATED MULTI-SCREEN SCREENSHOT CAPTURE ---
+            # Enable by setting AUTO_CAPTURE_ALL_SCREENS=1. Screenshots are written
+            # to ALL_SCREENS_OUTPUT_DIR (default 'screenshots/current'). After
+            # capturing all screens the app will exit if EXIT_AFTER_CAPTURE=1.
+            if os.environ.get('AUTO_CAPTURE_ALL_SCREENS') == '1':
+                try:
+                    out_dir = os.environ.get('ALL_SCREENS_OUTPUT_DIR', 'screenshots/current')
+                    if not os.path.isdir(out_dir):
+                        os.makedirs(out_dir, exist_ok=True)
+                    # Collect screen names in the order they were added.
+                    screen_names = [s.name for s in self.sm.screens]
+                    logging.info(f"[AUTO_CAPTURE_ALL_SCREENS] Capturing {len(screen_names)} screens → {out_dir}")
+
+                    def _capture(index):
+                        if index >= len(screen_names):
+                            logging.info('[AUTO_CAPTURE_ALL_SCREENS] Capture sequence complete.')
+                            if os.environ.get('EXIT_AFTER_CAPTURE') == '1':
+                                logging.info('[AUTO_CAPTURE_ALL_SCREENS] EXIT_AFTER_CAPTURE=1 → stopping app.')
+                                self.stop()
+                            return
+                        name = screen_names[index]
+                        try:
+                            self.sm.current = name
+                            # Allow a frame for layout/render, then screenshot.
+                            def _do_shot(_dt):
+                                try:
+                                    shot_path = os.path.join(out_dir, f"{name}.png")
+                                    Window.screenshot(shot_path)
+                                    logging.info(f"[AUTO_CAPTURE_ALL_SCREENS] Saved {shot_path}")
+                                except Exception as shot_err:
+                                    logging.error(f"[AUTO_CAPTURE_ALL_SCREENS] Failed screenshot for {name}: {shot_err}")
+                                finally:
+                                    # Schedule next capture.
+                                    Clock.schedule_once(lambda __dt: _capture(index + 1), 0.1)
+                            Clock.schedule_once(_do_shot, 0.15)
+                        except Exception as cap_err:
+                            logging.error(f"[AUTO_CAPTURE_ALL_SCREENS] Error switching to {name}: {cap_err}")
+                            Clock.schedule_once(lambda __dt: _capture(index + 1), 0.1)
+                    # Kick off capture sequence.
+                    Clock.schedule_once(lambda _dt: _capture(0), 0.2)
+                except Exception as e_cap:
+                    logging.error(f"[AUTO_CAPTURE_ALL_SCREENS] Failed to initialize capture sequence: {e_cap}")
 
         except Exception as e:
             logging.critical(f"FATAL: Failed during finish_loading: {e}", exc_info=True)
@@ -282,7 +408,7 @@ if __name__ == '__main__':
     from app.screens import (
         WelcomeScreen, HomeScreen, ScanScreen, RecordsScreen, HelpScreen,
         GuideScreen, ScanningScreen, ResultScreen,
-        CaptureResultScreen, SaveScreen, ImageSelectionScreen,
+        SaveScreen, ImageSelectionScreen,
         AnthracnoseScreen, SystemSpecScreen, PrecautionScreen, AboutUsScreen
     )
     
