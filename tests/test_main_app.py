@@ -42,12 +42,16 @@ class TestMangofyApp(unittest.TestCase):
         self.main_app_module = main
 
         self.user_data_dir = '/mock/user/data/dir'
-        self.db_path = os.path.join(self.user_data_dir, "mangofy.db")
+        # The runtime DB location is project-root/mangofy.db
+        self.db_path = os.path.join(project_root, "mangofy.db")
         self.log_path = os.path.join(self.user_data_dir, "app.log")
 
         # --- SOLUTION: Configure os mock to return valid paths ---
         # This prevents the FileNotFoundError during logging setup.
         self.mock_os.path.join.side_effect = os.path.join
+        # Ensure abspath resolves to the real project root for tests so
+        # main.py computes the expected project-root DB path.
+        self.mock_os.path.abspath.side_effect = os.path.abspath
         self.mock_os.path.dirname.side_effect = os.path.dirname
         self.mock_os.path.exists.return_value = True
         self.mock_os.path.isdir.return_value = True
@@ -119,7 +123,8 @@ class TestMangofyApp(unittest.TestCase):
 
         sm_instance = self.mock_ScreenManager.return_value
         # The loading screen is added in build(), the rest in finish_loading()
-        expected_screen_count = 1 + 15 # LoadingScreen + 15 others from main.py
+        # CaptureResultScreen deprecated; adjust expected count (LoadingScreen + 14 others)
+        expected_screen_count = 1 + 14
         self.assertEqual(sm_instance.add_widget.call_count, expected_screen_count)
 
         # Check that a specific screen was added
