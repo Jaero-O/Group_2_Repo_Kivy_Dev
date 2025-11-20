@@ -11,6 +11,8 @@ Database/
 test.db
 test_tmp.db
 mangofy.db
+# Database backups
+*.db.backup
 
 # Model Directories
 leaf-detection/models/
