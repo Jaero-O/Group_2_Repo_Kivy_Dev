@@ -53,6 +53,59 @@ Before making **ANY** changes to this codebase, you **MUST**:
 
 MangoFy is a Kivy-based mobile application designed to detect mango leaf diseases using computer vision and deep learning. The application provides a user-friendly interface to scan mango leaves, get predictions, save the results, and learn more about disease management.
 
+### ML Model Integration (Current Stabilization Branch)
+
+The TFLite predictor (`ml/predictor.py`) loads a MobileNetV2-based disease classifier. Integration follows these principles:
+
+| Asset | Default Local Path | Override Env Var | Notes |
+|-------|--------------------|------------------|-------|
+| Model (.tflite) | `ml/Plant_Disease_Prediction/tflite/mango_mobilenetv2.tflite` | `MANGOFY_MODEL_PATH` | Place file manually or use `scripts/download_model.py`. |
+| Labels (`labels.txt`) | `ml/assets/labels.txt` | `MANGOFY_LABELS_PATH` | Order MUST match model output indices. |
+| Test Image | (user provided) | `MANGOFY_TEST_IMAGE` | Used for auto-scan + test harness. |
+
+Quick local validation:
+```powershell
+# Set env vars (adjust paths to your local external repo)
+$env:MANGOFY_MODEL_PATH = "C:\Users\kenne\Group_2_Repo\Plant_Disease_Prediction\tflite\mango_mobilenetv2.tflite"
+$env:MANGOFY_LABELS_PATH = "C:\Users\kenne\Group_2_Repo\Plant_Disease_Prediction\labels.txt"
+$env:MANGOFY_TEST_IMAGE = "C:\Users\kenne\Downloads\Database\dataset\Anthracnose\20211008_124250 (Custom)(1).jpg"
+python tools/test_tflite_infer.py
+```
+
+If the model or interpreter is missing, the `ScanningScreen` now presents a popup instead of silently continuing.
+
+To download assets (when published via raw or release URLs):
+```powershell
+python scripts/download_model.py
+```
+Then (optional) unset overrides to use bundled paths:
+```powershell
+Remove-Item Env:MANGOFY_MODEL_PATH -ErrorAction SilentlyContinue
+Remove-Item Env:MANGOFY_LABELS_PATH -ErrorAction SilentlyContinue
+```
+
+Severity is computed via lesion segmentation (`ml/processing/severity.py`) with HSV thresholding (OpenCV) and a fallback heuristic. Canonical manuscript severity thresholds (centralized in `ml/processing/severity_constants.py`):
+* Healthy: prediction label "Healthy" OR severity < 10%
+* Early Stage: 10% ≤ severity < 30%
+* Advanced Stage: severity ≥ 30%
+
+Persisted scan data is inserted through `insert_scan_record` with disease + severity IDs after a successful prediction.
+
+### Syncing External ML Assets
+Use the sync script to pull model, labels, and training notebooks from the original `Group_2_Repo` without manually copying:
+```powershell
+python scripts/sync_external_ml.py --source "C:\Users\kenne\Group_2_Repo" --overwrite
+```
+Flags:
+* `--no-notebooks` skip copying training notebooks
+* `--overwrite` replace existing local assets
+
+After syncing you can test:
+```powershell
+$env:MANGOFY_TEST_IMAGE = "C:\Users\kenne\Downloads\Database\dataset\Anthracnose\20211008_124250 (Custom)(1).jpg"
+python tools/test_tflite_infer.py
+```
+
 ### Key Features
 
 ## Features
@@ -129,29 +182,17 @@ Group_2_Repo_Kivy_Dev/
 │   ├── KIVY_INTERFACE_MANUAL.pdf    # Kivy UI guide PDF
 │   └── SCANNING_CODE.pdf            # ML implementation PDF
 │
-├── src/                             # Application source code
+├── kivy-lcd-app/                    # Canonical Kivy application package (frontend)
+│   ├── main.py                      # Single entrypoint (MangofyApp)
 │   └── app/
-│       ├── __init__.py
-│       ├── config.py                # Model configuration
-│       ├── theme.py                 # Design tokens (33 tokens)
-│       ├── core/                    # Business logic layer
-│       │   ├── database.py          # SQLite database manager
-│       │   └── image_processor.py   # ML inference & preprocessing
-│       ├── screens/                 # Screen controllers
-│       │   ├── home_screen.py
-│       │   ├── scan_screen.py
-│       │   ├── scanning_screen.py
-│       │   ├── result_screen.py
-│       │   ├── records_screen.py
-│       │   └── ...
-│       ├── kv/                      # Kivy UI layouts (KV language)
-│       │   ├── HomeScreen.kv
-│       │   ├── ScanScreen.kv
-│       │   └── ...
-│       ├── utils/                   # Utilities
-│       │   ├── logger.py            # Structured logging
-│       │   └── __init__.py
-│       └── assets/                  # Images, icons
+│       ├── core/                    # Core logic (DB, configuration, helpers)
+│       ├── screens/                 # Screen controllers (Welcome, Scan, Scanning, Result, Save, etc.)
+│       ├── kv/                      # KV layout files loaded dynamically
+│       ├── assets/                  # Static images/icons
+│       └── __init__.py
+│
+│   # NOTE: Legacy duplicate structure under `src/app` has been deprecated.
+│   # Use only `kivy-lcd-app/app/` for new development.
 │
 ├── ml/                              # Machine learning modules
 │   ├── predictor.py                 # TFLite predictor wrapper
@@ -537,6 +578,8 @@ erDiagram
         **Database (`mangofy.db`)**
 
         - The app stores data in a SQLite DB named `mangofy.db` located under the user data directory (or `populated_mangofy.db` in dev/test scenarios). The schema includes `tbl_disease`, `tbl_severity_level`, `tbl_tree`, and `tbl_scan_record`.
+  
+        Note: For this repository baseline, `mangofy.db` is intentionally committed into the repo (development snapshot) to help the implementers and testers get a populated DB for local testing. Local runtime should use a user-specific DB location in production. If you need to avoid shipping a DB to the production environment, use an environment-specific `MANGOFY_DB_PATH` override.
         - There are utilities in `src/app/core/database.py` to initialize and populate lookup tables. Use the provided tests to validate DB creation.
 
         --
@@ -681,6 +724,8 @@ This section documents the intended user navigation flow for the app. Keep this 
      - Image Taken (captured photo or thumbnail)
      - Disease Classification
      - Severity (percentage and stage)
+     - **Confidence Badge** (color-coded for high, moderate, or low confidence)
+     - **Disease Metadata** (description, symptoms, prevention)
    - From the `Result` screen the user may:
      - `Retake` → returns to `Guidelines` (`ScanScreen`) to perform another capture.
      - `View Info` → opens a detail screen with the image, severity, leaf data, and disease classification; `Back` returns to `Result`.
@@ -692,315 +737,4 @@ This section documents the intended user navigation flow for the app. Keep this 
    - From Home select `View Records` to see a searchable list of Trees. 
    - Select a Tree to view images for that tree. 
    - Selecting a leaf image opens the detailed record view (image, severity, leaf data, disease classification).
-
-4) **Share Flow**
-   - From Home select `Share` to show cure instructions and a QR code. 
-   - `Back` returns to Home.
-
-5) **Help / Info Flow**
-   - From Home select `Help/Info` to see menu options (`About Us`, `System Spec`, `Guidelines and Precautions`, `Anthracnose Disease`). 
-   - Each content screen has `Back` behavior returning to Help/Info. 
-   - The `Anthracnose Disease` option opens a sub-menu whose final content screen returns to that sub-menu (not directly to the main Help/Info menu).
-
-### ⚠️ MANDATORY Implementation Rules
-
-**ALL developers and AI assistants MUST follow these rules:**
-
-1. **No Auto-Save:** Scanning should NOT persist records automatically. Persist only when the user chooses `Save` in the Save flow.
-2. **Thumbnail Management:** Keep image thumbnails separate from full-sized captures. Use thumbnails for lists and previews; only keep full-res images if explicitly requested.
-3. **State Management:** The `app` object exposes `analysis_image_path` and `analysis_result` for the flow between capture → scanning → result.
-4. **Navigation Integrity:** ALL screen transitions must follow `docs/USER_MANUAL.md` exactly. No deviations permitted.
-5. **Validation:** All user inputs must be validated as specified in `docs/USER_MANUAL.md` Section 3.2.
-
-**For complete implementation details, navigation rules, and UI specifications, see `docs/USER_MANUAL.md`.**
-
----
-
-## Machine Learning Models
-
-### Model Hosting
-
-Large ML model files are hosted on GitHub Releases (not in Git history) to keep the repository lightweight.
-
-**Release Tag:** `v1.0-models`
-
-### Download Models
-
-```powershell
-python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest Plant_Disease_Prediction/
-```
-
-### Upload Models (Maintainers Only)
-
-Requires GitHub CLI authenticated:
-
-```powershell
-gh auth login
-.\scripts\publish_models_github.ps1 -Tag 'v1.0-models' -Title 'ML models v1' -Notes 'Models removed from repo'
-```
-
-**See `docs/MODEL_HOSTING.md` for complete details.**
-
----
-
-## Development Workflow
-
-### Pre-Development Checklist
-
-Before starting ANY development work:
-
-- [ ] ✅ Read `README.md` (this file)
-- [ ] ✅ Read `docs/SYSTEM_REQUIREMENTS.md`
-- [ ] ✅ Read `docs/USER_MANUAL.md`
-- [ ] ✅ Review `COMPREHENSIVE_ASSESSMENT_REPORT.md`
-- [ ] ✅ Understand current test pass rate (98.7%)
-- [ ] ✅ Verify virtual environment activated
-- [ ] ✅ Run tests to establish baseline
-
-### Making Changes
-
-1. **Create feature branch:**
-```powershell
-git checkout integration
-git pull origin integration
-git checkout -b feature/your-feature-name
-```
-
-2. **Make changes following documentation:**
-   - Consult `docs/USER_MANUAL.md` for UI changes
-   - Consult `docs/SYSTEM_REQUIREMENTS.md` for feature requirements
-   - Update documentation if changing behavior
-
-3. **Run tests:**
-```powershell
-pytest tests/ -k "not visual" --tb=line -q
-# Must maintain ≥90% pass rate
-```
-
-4. **Update documentation:**
-   - If changing UI flow → Update `docs/USER_MANUAL.md`
-   - If adding features → Update `docs/SYSTEM_REQUIREMENTS.md`
-   - If changing database → Update `DATABASE_DOCUMENTATION_PLAN.md`
-
-5. **Commit and push:**
-```powershell
-git add .
-git commit -m "feat: descriptive commit message"
-git push origin feature/your-feature-name
-```
-
-6. **Create Pull Request:**
-   - Reference documentation compliance in PR description
-   - Link to related issues
-   - Wait for CI and code review
-
-### Common Development Commands
-
-```powershell
-# Activate environment
-.\.venv\Scripts\Activate.ps1
-
-# Run app
-python main.py
-
-# Run tests
-pytest tests/ -k "not visual" -v
-
-# Check code quality
-pylint src/app/
-
-# Generate coverage report
-pytest tests/ --cov=src/app --cov-report=html
-
-# Download models
-python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest Plant_Disease_Prediction/
-
-# Simulate user flows
-python scripts/simulate_flows.py
-```
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue: "ModuleNotFoundError: No module named 'app'"**
-- **Solution:** Ensure virtual environment is activated and dependencies installed:
-```powershell
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-**Issue: "FileNotFoundError: [Errno 2] No such file or directory: 'Plant_Disease_Prediction/tflite/mango_mobilenetv2.tflite'"**
-- **Solution:** Download models from GitHub Release:
-```powershell
-python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest Plant_Disease_Prediction/
-```
-
-**Issue: "⚠ ML model unavailable" in app**
-- **Solution:** Verify model files exist:
-```powershell
-dir Plant_Disease_Prediction\tflite\
-# Should show: mango_mobilenetv2.tflite, labels.txt
-```
-
-**Issue: Test failures after pulling latest changes**
-- **Solution:** Re-install dependencies and clear cache:
-```powershell
-pip install -r requirements.txt --upgrade
-pytest tests/ --cache-clear
-```
-
-**Issue: Database locked errors**
-- **Solution:** Close all instances of the app, delete `mangofy.db`, restart app (will recreate)
-
-**Issue: Deprecated Kivy warnings**
-- **Solution:** Run the automated fixer:
-```powershell
-python scripts/fix_deprecated_properties.py
-```
-
-### Getting Help
-
-1. **Check documentation:**
-   - `docs/SYSTEM_REQUIREMENTS.md` - Feature specifications
-   - `docs/USER_MANUAL.md` - UI behavior
-   - `COMPREHENSIVE_ASSESSMENT_REPORT.md` - Known issues
-
-2. **Review logs:**
-   - Application logs: `%APPDATA%\mangofy\logs\app.log`
-   - Test logs: `pytest tests/ -v --log-cli-level=DEBUG`
-
-3. **Search issues:**
-   - Check GitHub Issues for similar problems
-   - Search documentation for keywords
-
-4. **Ask for help:**
-   - Open GitHub Issue with:
-     - Steps to reproduce
-     - Expected vs actual behavior
-     - Relevant log excerpts
-     - Environment details (OS, Python version)
-
----
-
-## Contributing
-
-**⚠️ ALL contributions MUST comply with documentation requirements.**
-
-### Before Making Changes
-
-1. **Read Documentation First:**
-   - `docs/AI_ASSISTANT_INSTRUCTIONS.md` - Mandatory directives for AI systems
-   - `docs/USER_MANUAL.md` - Complete UI flow specifications  
-   - `docs/SYSTEM_REQUIREMENTS.md` - System architecture and requirements
-
-2. **Run Compliance Tests:**
-   ```powershell
-   # MANDATORY: All UI/navigation changes must pass these tests
-   pytest tests/test_ui_flow_compliance.py -v
-   
-   # Expected result: 22/22 tests passing
-   ```
-
-### Contribution Guidelines
-
-1. ✅ **Read ALL required documentation** before making changes
-2. ✅ Follow code style conventions (PEP 8 for Python, Kivy style for KV files)
-3. ✅ Write tests for new features (maintain ≥90% coverage)
-4. ✅ Update documentation when changing behavior
-5. ✅ Ensure all tests pass before submitting PR
-6. ✅ Reference USER_MANUAL.md for UI changes
-
-**PROHIBITED without documentation approval:**
-- ❌ Changing screen transitions/navigation flow
-- ❌ Adding auto-save behavior
-- ❌ Modifying back button logic
-- ❌ Changing ML preprocessing pipeline
-
-### Pull Request Template
-
-```markdown
-## Description
-[Describe what this PR does]
-
-## Documentation Compliance
-- [ ] I have read docs/AI_ASSISTANT_INSTRUCTIONS.md
-- [ ] I have read docs/USER_MANUAL.md
-- [ ] UI compliance tests pass (22/22): `pytest tests/test_ui_flow_compliance.py`
-- [ ] Changes comply with documented specifications
-- [ ] Documentation updated (if behavior changed)
-
-## Testing
-- [ ] All tests pass (≥90% pass rate maintained)
-- [ ] New tests added for new features
-- [ ] Manual testing completed
-
-## Checklist
-- [ ] Code follows project style guidelines
-- [ ] Commit messages are descriptive
-- [ ] No deprecation warnings introduced
-- [ ] Logs reviewed for errors
-```
-
----
-
-## Project Status
-
-**Current Version:** v1.0 (Production Ready)  
-**Test Pass Rate:** 98.7% (78/79 tests passing)  
-**Code Quality:** B+ grade (87/100)  
-**Documentation:** Complete  
-**Deployment Status:** ✅ Approved for Production
-
-### Recent Improvements (November 2025)
-
-- ✅ Fixed 78 deprecated Kivy property warnings
-- ✅ Implemented structured logging system
-- ✅ Added database indexing (5 indexes)
-- ✅ Implemented automatic backup/restore
-- ✅ Created centralized model configuration
-- ✅ Expanded theme system (6→33 tokens)
-- ✅ Added user-visible error feedback
-- ✅ Documented all system requirements
-
-**See `IMPLEMENTATION_COMPLETION_SUMMARY.md` for complete details.**
-
----
-
-## License
-
-[Specify license here - e.g., MIT, GPL, Proprietary]
-
----
-
-## Contact & Support
-
-**Development Team:** Group 2 - Kivy Development  
-**Repository:** https://github.com/Jaero-O/Group_2_Repo_Kivy_Dev  
-**Branch:** integration  
-
----
-
-## Final Compliance Reminder
-
-⚠️ **THIS IS A DEFINITIVE NOTICE** ⚠️
-
-**ALL code changes, feature additions, and bug fixes MUST:**
-
-1. ✅ Follow specifications in `docs/SYSTEM_REQUIREMENTS.md`
-2. ✅ Implement UI flows exactly as documented in `docs/USER_MANUAL.md`
-3. ✅ Maintain database schema as documented in `DATABASE_DOCUMENTATION_PLAN.md`
-4. ✅ Preserve hardware compatibility per `docs/HARDWARE_SPECIFICATIONS.md`
-5. ✅ Maintain test coverage ≥90%
-6. ✅ Preserve production-ready status (98.7% test pass rate)
-
-**Failure to comply with these requirements will result in rejected pull requests and potential rollback of changes.**
-
-**When in doubt, READ THE DOCUMENTATION FIRST.**
-
----
-
-*Last Updated: November 19, 2025*  
-*README Version: 2.0 (Definitive Documentation Edition)*
+   - **Image Gallery**: Use the "Load More" button at the bottom of the gallery to view additional images if available.

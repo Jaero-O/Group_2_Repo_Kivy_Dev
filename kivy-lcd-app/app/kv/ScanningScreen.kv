@@ -9,9 +9,81 @@
             pos: self.pos
             size: self.size
 
-    Label:
-        text: "Scanning..."
-        font_size: 36
-        bold: True
-        color: 0, 0, 0, 1
-        pos_hint: {"center_x": 0.5, "center_y": 0.5}
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint: 1, 1
+        padding: [40, 80, 40, 80]
+        spacing: 30
+
+        Label:
+            text: root.status_text
+            font_size: 30
+            bold: True
+            color: 0, 0, 0, 1
+            size_hint_y: None
+            height: self.texture_size[1]
+            halign: 'center'
+            valign: 'middle'
+            text_size: self.width, None
+
+        # Progress bar container
+        FloatLayout:
+            size_hint_y: None
+            height: 40
+            canvas.before:
+                Color:
+                    rgba: 0,0,0,0.08
+                RoundedRectangle:
+                    pos: self.x, self.center_y - 12
+                    size: self.width, 24
+                    radius: [12]
+
+            # Filled portion
+            canvas:
+                Color:
+                    rgba: 0/255,152/255,0/255, 1
+                RoundedRectangle:
+                    pos: self.x, self.center_y - 12
+                    size: (self.width * (root.progress_pct/100.0), 24)
+                    radius: [12]
+
+            Label:
+                text: f"{int(root.progress_pct)}%"
+                color: 1,1,1,1
+                font_size: 16
+                bold: True
+                pos_hint: {"center_x":0.5, "center_y":0.5}
+
+        Label:
+            text: f"Frame {root.current_frame}/{root.total_frames}" if root.total_frames else "Preparing..."
+            font_size: 18
+            color: 0,0,0,1
+            size_hint_y: None
+            height: self.texture_size[1]
+            halign: 'center'
+            valign: 'middle'
+            text_size: self.width, None
+        
+        # Spacer
+        Widget:
+            size_hint_y: 1
+        
+        # Cancel button
+        Button:
+            text: "Cancel"
+            size_hint: None, None
+            size: 150, 50
+            pos_hint: {"center_x": 0.5}
+            font_size: 18
+            bold: True
+            color: 1, 1, 1, 1
+            background_normal: ''
+            background_color: 0.8, 0.2, 0.2, 1.0
+            on_release: root.cancel_scan()
+            canvas.before:
+                Color:
+                    rgba: self.background_color if self.state == 'normal' else (0.6, 0.1, 0.1, 1.0)
+                RoundedRectangle:
+                    pos: self.pos
+                    size: self.size
+                    radius: [10]
