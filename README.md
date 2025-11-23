@@ -55,21 +55,38 @@ MangoFy is a Kivy-based mobile application designed to detect mango leaf disease
 
 ### ML Model Integration (Current Stabilization Branch)
 
-The TFLite predictor (`ml/predictor.py`) loads a MobileNetV2-based disease classifier. Integration follows these principles:
+The predictor (`ml/predictor.py`) now implements the repository's definitive **segmentation-first** scanning pipeline by default. It will perform classification and lesion segmentation (mask) and expose severity metrics in a single API surface. Integration follows these principles:
 
 | Asset | Default Local Path | Override Env Var | Notes |
 |-------|--------------------|------------------|-------|
-| Model (.tflite) | `ml/Plant_Disease_Prediction/tflite/mango_mobilenetv2.tflite` | `MANGOFY_MODEL_PATH` | Place file manually or use `scripts/download_model.py`. |
+| Classification model (TFLite) | `ml/Plant_Disease_Prediction/tflite/mango_mobilenetv2.tflite` | `MANGOFY_MODEL_PATH` | Place file manually or use `scripts/download_model.py`. |
+| Alternative MobileNetV3 model | `ml/Plant_Disease_Prediction/tflite/mobilenetv3_mango_leaf_enhanced.tflite` | `MANGOFY_MODEL_PATH` | Optional enhanced classifier; update settings to prefer this model. |
+| All-disease MobileNetV2 model | `ml/Plant_Disease_Prediction/tflite/all_disease_mango_leaf_disease_mnetv2.tflite` | `MANGOFY_MODEL_PATH` | Optional all-disease classifier which returns multi-class outputs. |
+| Segmentation model (optional, TFLite) | `ml/Plant_Disease_Prediction/tflite/mango_segmentation.tflite` | `MANGOFY_SEGMENTATION_MODEL_PATH` | Optional segmentation model that improves lesion masks. If missing, fallback CPU/HSV segmentation is used. |
 | Labels (`labels.txt`) | `ml/assets/labels.txt` | `MANGOFY_LABELS_PATH` | Order MUST match model output indices. |
 | Test Image | (user provided) | `MANGOFY_TEST_IMAGE` | Used for auto-scan + test harness. |
 
 Quick local validation:
 ```powershell
 # Set env vars (adjust paths to your local external repo)
-$env:MANGOFY_MODEL_PATH = "C:\Users\kenne\Group_2_Repo\Plant_Disease_Prediction\tflite\mango_mobilenetv2.tflite"
-$env:MANGOFY_LABELS_PATH = "C:\Users\kenne\Group_2_Repo\Plant_Disease_Prediction\labels.txt"
+$env:MANGOFY_MODEL_PATH = "C:\Users\kenne\Group_2_Repo_Kivy_Dev\ml\Plant_Disease_Prediction\tflite\mango_mobilenetv2.tflite"
+$env:MANGOFY_LABELS_PATH = "C:\Users\kenne\Group_2_Repo_Kivy_Dev\ml\Plant_Disease_Prediction\tflite\labels.txt"
 $env:MANGOFY_TEST_IMAGE = "C:\Users\kenne\Downloads\Database\dataset\Anthracnose\20211008_124250 (Custom)(1).jpg"
+ # Optional segmentation model path
+ $env:MANGOFY_SEGMENTATION_MODEL_PATH = "C:\Users\kenne\Group_2_Repo_Kivy_Dev\ml\Plant_Disease_Prediction\tflite\mango_segmentation.tflite"
+ # Optional model/version identifier
+ $env:MANGOFY_MODEL_VERSION = "v1.0-seg"
+# Use `MANGOFY_PREDICTOR_TYPE='classic'` to force the old MobileNetV2 classification-only predictor.
+$env:MANGOFY_PREDICTOR_TYPE = "segmentation"
 python tools/test_tflite_infer.py
+
+Additionally, we provide an integration-helper script to perform common validation steps in sequence (OCR extraction of the requirements PDF, DB migration, model validation, and a short batch inference):
+
+```powershell
+python scripts/auto_run_integration.py
+```
+
+This script is safe to run locally; it will not modify DB data destructively and will run migrations idempotently. Use it to sanity-check that models and DB schema are in place and functioning.
 ```
 
 If the model or interpreter is missing, the `ScanningScreen` now presents a popup instead of silently continuing.
@@ -83,6 +100,244 @@ Then (optional) unset overrides to use bundled paths:
 Remove-Item Env:MANGOFY_MODEL_PATH -ErrorAction SilentlyContinue
 Remove-Item Env:MANGOFY_LABELS_PATH -ErrorAction SilentlyContinue
 ```
+
+## Running the Kivy App Locally (Windows / Raspberry Pi)
+
+Follow these steps to run the Kivy UI locally for development and testing. The main UI entrypoint is `kivy-lcd-app/main.py`.
+
+1. Create and activate a Python venv:
+
+```bash
+python -m venv .venv
+# Windows PowerShell
+.\.venv\Scripts\Activate
+# Linux / Pi
+source .venv/bin/activate
+```
+
+2. Install (or pin) core requirements. On non-Pi machines, skip the Pi-specific packages or use `--no-deps` for pi-only packages:
+
+```bash
+pip install -U pip setuptools wheel
+pip install -r requirements.txt
+```
+
+3. Initialize the DB (idempotent):
+
+```bash
+python scripts/db_init.py
+```
+
+4. Start the app (development):
+
+On Windows (PowerShell), set the following environment variables and run the app:
+
+```powershell
+$Env:KIVY_NO_ARGS='1'
+$Env:MANGOFY_ALLOW_FALLBACKS='1'  # allow simulation when picamera2 not installed
+$Env:MANGOFY_MODEL_PATH='ml\Plant_Disease_Prediction\tflite\mobilenetv3_mango_leaf_enhanced.tflite'
+$Env:MANGOFY_LABELS_PATH='ml\Plant_Disease_Prediction\tflite\labels.txt'
+python kivy-lcd-app/main.py
+```
+
+On Linux / Raspberry Pi:
+
+```bash
+export KIVY_NO_ARGS=1
+export MANGOFY_ALLOW_FALLBACKS=1
+export MANGOFY_MODEL_PATH=ml/Plant_Disease_Prediction/tflite/mobilenetv3_mango_leaf_enhanced.tflite
+export MANGOFY_LABELS_PATH=ml/Plant_Disease_Prediction/tflite/labels.txt
+python3 kivy-lcd-app/main.py
+```
+
+Notes:
+- On Pi, prefer `tflite-runtime` and `picamera2` (install via `scripts/setup_pi.sh`) and set `MANGOFY_STRICT_MODE=1` (and *do not* set `MANGOFY_ALLOW_FALLBACKS`) for hardware tests.
+- If you need a headless test (CI), use `tools/import_with_retry.py` with `--simulate` and `--dry-run`.
+
+
+## Raspberry Pi Implementation Guide
+
+This section provides detailed instructions for deploying and running MangoFy on a Raspberry Pi with full hardware integration (camera, motor, GPIO).
+
+### Hardware Requirements
+
+- **Raspberry Pi 4 or 5** (recommended for performance)
+- **Pi Camera Module 3** (or compatible Picamera2-supported camera)
+- **Stepper Motor Driver** (e.g., A4988 or similar, connected to GPIO pins)
+- **Stepper Motor** (NEMA 17 or compatible, with belt/gear for leaf scanning)
+- **IR Sensor** (for homing detection)
+- **LED Lights** (for illumination during capture)
+- **Power Supply** (adequate for Pi + motor + lights)
+- **SD Card** (32GB+ recommended)
+
+### Software Setup on Raspberry Pi
+
+1. **Install Raspberry Pi OS** (64-bit Lite or Desktop):
+   ```bash
+   # Update system
+   sudo apt update && sudo apt upgrade -y
+   ```
+
+2. **Install Python and Dependencies**:
+   ```bash
+   sudo apt install python3 python3-pip python3-venv git -y
+   ```
+
+3. **Clone the Repository**:
+   ```bash
+   git clone https://github.com/Jaero-O/Group_2_Repo_Kivy_Dev.git
+   cd Group_2_Repo_Kivy_Dev
+   ```
+
+4. **Run Pi Setup Script**:
+   ```bash
+   sudo bash scripts/setup_pi.sh
+   ```
+   This installs:
+   - `picamera2` for camera control
+   - `tflite-runtime` for ML inference
+   - `RPi.GPIO` for motor control
+   - Kivy dependencies optimized for Pi
+
+5. **Activate Pi Virtual Environment**:
+   ```bash
+   source .venv_pi/bin/activate
+   ```
+
+6. **Initialize Database**:
+   ```bash
+   python scripts/db_init.py
+   ```
+
+### Hardware Wiring (GPIO Pin Configuration)
+
+| Component | GPIO Pin | BCM Number | Notes |
+|-----------|----------|------------|-------|
+| Stepper DIR | 5 | GPIO5 | Direction control |
+| Stepper STEP | 12 | GPIO12 | PWM-capable pin |
+| Stepper ENABLE | 6 | GPIO6 | Motor enable/disable |
+| LED Light | 13 | GPIO13 | Illumination control |
+| IR Sensor | 26 | GPIO26 | Homing detection |
+
+**Important Safety Notes:**
+- Double-check wiring before powering on
+- Use appropriate current-limiting resistors for LEDs
+- Ensure motor driver voltage matches motor specifications
+- Test GPIO pins individually before full assembly
+
+### Running MangoFy on Raspberry Pi
+
+1. **Set Environment Variables**:
+   ```bash
+   export KIVY_NO_ARGS=1
+   export MANGOFY_STRICT_MODE=1  # Enforce hardware availability
+   export MANGOFY_MODEL_PATH=ml/Plant_Disease_Prediction/tflite/mobilenetv3_mango_leaf_enhanced.tflite
+   export MANGOFY_LABELS_PATH=ml/Plant_Disease_Prediction/tflite/labels.txt
+   # Optional segmentation model
+   export MANGOFY_SEGMENTATION_MODEL_PATH=ml/Plant_Disease_Prediction/tflite/mango_segmentation.tflite
+   ```
+
+2. **Start the Application**:
+   ```bash
+   python kivy-lcd-app/main.py
+   ```
+
+3. **Alternative: Run Scanner CLI**:
+   ```bash
+   python tools/run_scanner_raspi.py
+   ```
+   This performs homing, scanning, stitching, and processing in sequence.
+
+### Dataset Import for Testing
+
+The repository includes a development dataset in `data/database/` for testing inference and UI flows.
+
+1. **Import Dataset with Inference**:
+   ```bash
+   python tools/import_with_retry.py --source data/database --simulate --workers 2 --progress
+   ```
+   This simulates model inference and populates the database with metadata.
+
+2. **For Real Inference** (requires TFLite runtime):
+   ```bash
+   python tools/import_with_retry.py --source data/database --workers 1 --progress
+   ```
+
+### Troubleshooting RasPi Issues
+
+- **Camera Not Detected**: Run `libcamera-hello` to test camera
+- **GPIO Permission Denied**: Ensure user is in `gpio` group: `sudo usermod -a -G gpio $USER`
+- **Motor Not Moving**: Check stepper driver connections and power
+- **TFLite Runtime Missing**: Re-run `scripts/setup_pi.sh` or install manually
+- **Kivy Display Issues**: Set `export DISPLAY=:0` for X11, or use `--fullscreen` for touchscreen
+
+### Performance Optimization
+
+- Use `tflite-runtime` instead of full TensorFlow for faster inference
+- Enable WAL mode in SQLite: `PRAGMA journal_mode=WAL;`
+- Run motor operations in background threads to keep UI responsive
+- Use `--batch-size` in import scripts to control memory usage
+
+### Backup and Recovery
+
+- **Database Backup**: `cp mangofy.db mangofy.db.bak`
+- **Full System Backup**: Use `rsync` to backup entire repo
+- **Recovery**: Restore DB and re-run import if needed
+
+For detailed hardware specifications, see `docs/HARDWARE_SPECIFICATIONS.md`.
+
+## Running the Kivy App Locally (Windows / Raspberry Pi)
+
+These instructions help you run the full Kivy app locally for development and testing. The app's main entrypoint for the UI is `kivy-lcd-app/main.py`.
+
+1. Create and activate a virtualenv:
+
+```bash
+python -m venv .venv
+# Windows PowerShell
+.\.venv\Scripts\Activate
+# Linux/Mac
+source .venv/bin/activate
+```
+
+2. Install core requirements (on Windows you may skip Pi-specific packages):
+
+```bash
+pip install -U pip setuptools wheel
+pip install -r requirements.txt
+# Optional on Pi: pip install -r scripts/requirements-pi.txt
+```
+
+3. Initialize (or migrate) the DB:
+
+```bash
+python scripts/db_init.py
+```
+
+4. Run the app in a development window:
+
+```bash
+# Set environment variables for Kivy CLI and model path.
+export KIVY_NO_ARGS=1
+export MANGOFY_MODEL_PATH=ml/Plant_Disease_Prediction/tflite/mobilenetv3_mango_leaf_enhanced.tflite
+export MANGOFY_LABELS_PATH=ml/Plant_Disease_Prediction/tflite/labels.txt
+
+python kivy-lcd-app/main.py
+```
+
+Note: On Windows, set environment variables with `set` or `$env:*` in PowerShell. Example:
+
+```powershell
+$Env:KIVY_NO_ARGS='1'
+$Env:MANGOFY_MODEL_PATH='ml\Plant_Disease_Prediction\tflite\mobilenetv3_mango_leaf_enhanced.tflite'
+python kivy-lcd-app/main.py
+```
+
+Troubleshooting:
+- If Kivy fails to start in a headless CI environment, you can still run headless tests and simulation scripts (e.g., `tools/import_with_retry.py` in `--simulate` mode) to validate pipeline behavior.
+- For Raspberry Pi, use the `scripts/setup_pi.sh` to create a Pi-friendly venv and install `picamera2` and `tflite-runtime`.
+
+
 
 Severity is computed via lesion segmentation (`ml/processing/severity.py`) with HSV thresholding (OpenCV) and a fallback heuristic. Canonical manuscript severity thresholds (centralized in `ml/processing/severity_constants.py`):
 * Healthy: prediction label "Healthy" OR severity < 10%
@@ -211,7 +466,7 @@ Group_2_Repo_Kivy_Dev/
 │   └── ...
 │
 ├── scripts/                         # Utility scripts
-│   ├── download_models.py           # Download models from GitHub Release
+│   ├── download_model.py           # Download models from GitHub Release
 │   ├── publish_models_github.ps1    # Upload models to GitHub Release
 │   ├── fix_deprecated_properties.py # KV file updater
 │   ├── simulate_flows.py            # User flow simulator
@@ -220,6 +475,7 @@ Group_2_Repo_Kivy_Dev/
 ├── data/                            # Runtime data
 │   ├── captures/                    # Captured leaf images
 │   └── processed/                   # Processed images
+│   └── database/                    # Development dataset for RasPi implementation (may be tracked via Git LFS)
 │
 ├── COMPREHENSIVE_ASSESSMENT_REPORT.md      # System assessment (B+ grade)
 ├── IMPLEMENTATION_COMPLETION_SUMMARY.md    # Recent improvements
@@ -257,7 +513,7 @@ Group_2_Repo_Kivy_Dev/
 #### Machine Learning
 *   **`ml/predictor.py`**: TFLite model wrapper
 *   **`ml/severity_calculator.py`**: Lesion segmentation and severity scoring
-*   **`ml/Plant_Disease_Prediction/tflite/`**: MobileNetV2 model files (download via `scripts/download_models.py`)
+*   **`ml/Plant_Disease_Prediction/tflite/`**: MobileNetV2 model files (download via `scripts/download_model.py`)
 
 #### Testing (98.7% Pass Rate)
 *   **`tests/`**: Comprehensive test suite covering core modules, screens, database, and ML integration
@@ -302,13 +558,17 @@ python -m venv .venv
 
 3. **Install dependencies:**
 ```powershell
-python -m pip install --upgrade pip
+python -m pip install --upgrade pip setuptools wheel
+# On Windows: install Kivy prebuilt wheels first to avoid local build issues
+pip install --pre --upgrade "kivy[base]" -f https://kivy.org/downloads/simple/
+pip install kivy_deps.sdl2 kivy_deps.glew -f https://kivy.org/downloads/simple/
+# Then install remaining dependencies
 pip install -r requirements.txt
 ```
 
 4. **Download ML models:**
 ```powershell
-python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest Plant_Disease_Prediction/
+python scripts/download_model.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest Plant_Disease_Prediction/
 ```
 
 #### Linux / macOS (Bash)
@@ -324,7 +584,7 @@ source .venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest Plant_Disease_Prediction/
+python scripts/download_model.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest Plant_Disease_Prediction/
 ```
 
 #### Alternative: Conda Environment
@@ -332,12 +592,30 @@ python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.
 ```powershell
 conda env create -f environment.yml
 conda activate mangofy
-python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest Plant_Disease_Prediction/
+python scripts/download_model.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest Plant_Disease_Prediction/
 ```
 
 ---
 
 ## Running the Application
+### Local Validation Script
+For easier local validation (venv, model download, inference test, and pytest), use the helper script:
+
+```powershell
+.\scripts\run_local_full_validation.ps1 -CreateVenv -InstallRequirements -ModelDownload
+```
+
+Flags:
+- `-CreateVenv`: Create a `.venv` (optional)
+- `-InstallRequirements`: Install packages from `requirements.txt`
+- `-InstallTensorflow`: Install `tensorflow==2.13.0` (heavy download) if needed for inference on Windows
+- `-ModelDownload`: Downloads the tflite model and labels if missing
+- `-Quick`: Run a quick pytest subset (not visual) instead of the full suite
+- `-RunVisual`: Run capture & visual regression steps (requires GUI)
+- `-DryRun`: Prints planned actions without performing them
+
+Results and logs will be saved to the `artifacts/` folder.
+
 
 ### Development Mode
 
@@ -453,7 +731,7 @@ erDiagram
         - App entry: `main.py` (app bootstrap in `src/`)
         - App code: `src/app/` (core, screens, kv files)
         - Tests: `tests/`
-        - Model helpers: `scripts/publish_models_github.ps1`, `scripts/download_models.py`
+        - Model helpers: `scripts/publish_models_github.ps1`, `scripts/download_model.py`
         - CI workflow: `.github/workflows/download-models.yml`
         - Models Release (uploaded): `v1.0-models` (GitHub Release)
 
@@ -591,7 +869,7 @@ erDiagram
 
         What we added to help:
         - `scripts/publish_models_github.ps1` — PowerShell script that uses `gh` to create a release and upload assets. It supports absolute paths and glob-style patterns.
-        - `scripts/download_models.py` — Python script that downloads release assets by tag; supports `GITHUB_TOKEN` from the environment for private releases.
+        - `scripts/download_model.py` — Python script that downloads release assets by tag; supports `GITHUB_TOKEN` from the environment for private releases.
         - `.github/workflows/download-models.yml` — CI job that downloads models into `models/` for workflows.
 
         Uploading models (manual, using `gh` locally)
@@ -618,7 +896,7 @@ erDiagram
         Downloading models (local or CI):
 
         ```powershell
-        python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest models/
+        python scripts/download_model.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest models/
         ```
 
         CI (GitHub Actions): The workflow `.github/workflows/download-models.yml` will run the same downloader using `GITHUB_TOKEN`.
@@ -679,7 +957,7 @@ erDiagram
         - Download models locally:
 
         ```powershell
-        python scripts/download_models.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest models/
+        python scripts/download_model.py --repo Jaero-O/Group_2_Repo_Kivy_Dev --tag v1.0-models --dest models/
         ```
 
         --
