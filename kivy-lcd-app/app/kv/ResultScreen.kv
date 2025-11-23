@@ -38,7 +38,7 @@
         valign: "left"
 
         Label:
-            text: "Result"
+            text: "Result" if not root.prediction_label else ("Result · " + str(root.prediction_label))
             color: 3/255, 30/255, 0/255, 1
             font_size: 32
             bold: True
@@ -103,9 +103,11 @@
             spacing: 30
 
             # Image Display Area
-            FloatLayout:
+            BoxLayout:
+                orientation: "vertical"
                 size_hint: 1, None
-                height: 300
+                height: 500
+                padding: [10, 10, 10, 10]
 
                 # Shadow
                 canvas.before:
@@ -124,6 +126,12 @@
                         pos: self.pos
                         size: self.size
                         radius: [15, 15, 15, 15]
+                
+                # Display the scanned image
+                Image:
+                    source: root.image_path if root.image_path else ""
+                    allow_stretch: False
+                    keep_ratio: True
 
             # Result Details Section
             BoxLayout:
@@ -142,8 +150,8 @@
 
                     # Healthy Percentage
                     Label:
-                        text: "100%"
-                        color: (38/255, 164/255, 33/255, 1)
+                        text: str(int(root.severity_percentage)) + "%"
+                        color: (38/255, 164/255, 33/255, 1) if root.severity_level.lower() == 'healthy' else (207/255,191/255,44/255,1) if root.severity_level.lower() == 'moderate' else (221/255,45/255,29/255,1)
                         font_size: 64
                         bold: True
                         size_hint_x: None
@@ -189,8 +197,8 @@
                                 radius: [8]
 
                         Label:
-                            text: "HEALTHY"
-                            color: 0/255, 82/255, 0/255, 1
+                            text: root.severity_level.upper() if root.severity_level else "UNKNOWN"
+                            color: (0/255, 82/255, 0/255, 1) if root.severity_level.lower() == 'healthy' else (99/255,91/255,1/255,1) if root.severity_level.lower() == 'moderate' else (150/255,22/255,3/255,1)
                             font_size: 16
                             bold: True
                             valign: "middle"
@@ -235,7 +243,7 @@
 
                 # Severity Level
                 Label:
-                    text: "SEVERITY LEVEL"
+                    text: "SEVERITY LEVEL" if root.severity_level else "SEVERITY LEVEL (N/A)"
                     color: 100/255, 100/255, 100/255, 1
                     font_size: 12
                     bold: True
@@ -247,7 +255,7 @@
 
                 # Leaf Data Header
                 Label:
-                    text: "Leaf Data"
+                    text: "Leaf Data" if root.prediction_label else "Leaf Data (No prediction)"
                     color: 0, 0, 0, 1
                     font_size: 18
                     bold: True
@@ -259,7 +267,7 @@
 
                 # Description
                 Label:
-                    text: "This image shows a 100% healthy mango leaf, free from anthracnose and any other diseases. The leaf displays a vibrant green color, smooth surface, and uniform texture—representing the ideal standard for a healthy, disease-free mango leaf."
+                    text: root.disease_description if root.disease_description else ("Healthy leaf with no detected disease." if root.severity_level.lower() == 'healthy' else ((str(root.prediction_label) + " detected \u00b7 " + str(round(root.severity_percentage, 1)) + "% affected.") if root.prediction_label else "No disease prediction available."))
                     color: 0, 0, 0, 1
                     font_size: 18
                     size_hint: 1, None
@@ -267,6 +275,55 @@
                     halign: "left"
                     valign: "top"
                     text_size: self.width, None
+
+                # Disease Details Section (Symptoms / Prevention)
+                BoxLayout:
+                    orientation: 'vertical'
+                    size_hint: 1, None
+                    height: self.minimum_height
+                    spacing: 6
+
+                    Label:
+                        text: 'Symptoms' if root.disease_symptoms else ''
+                        color: 0,0,0,1
+                        font_size: 16
+                        bold: True if root.disease_symptoms else False
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.width, None
+
+                    Label:
+                        text: root.disease_symptoms
+                        color: 0,0,0,1
+                        font_size: 15
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
+                        valign: 'top'
+                        text_size: self.width, None
+
+                    Label:
+                        text: 'Prevention' if root.disease_prevention else ''
+                        color: 0,0,0,1
+                        font_size: 16
+                        bold: True if root.disease_prevention else False
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.width, None
+
+                    Label:
+                        text: root.disease_prevention
+                        color: 0,0,0,1
+                        font_size: 15
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
+                        valign: 'top'
+                        text_size: self.width, None
 
                 # Date Section
                 BoxLayout:
@@ -287,7 +344,7 @@
                         text_size: self.width, None
 
                     Label:
-                        text: "December 1, 2025"
+                        text: root.formatted_timestamp
                         color: 0, 0, 0, 1
                         font_size: 18
                         size_hint: 1, None
@@ -295,3 +352,99 @@
                         halign: "left"
                         valign: "middle"
                         text_size: self.width, None
+    
+    # Confidence Badge (Fixed at bottom-left)
+    BoxLayout:
+        size_hint: None, None
+        size: 180, 32
+        pos_hint: {"x": 0.05, "y": 0.025}
+        
+        canvas.before:
+            Color:
+                rgba: app.get_color_from_hex(root.confidence_badge_color) if root.confidence_badge_color else (0.5, 0.5, 0.5, 1)
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [8]
+        
+        Label:
+            text: root.confidence_badge_text
+            color: 1, 1, 1, 1
+            font_size: 13
+            bold: True
+            halign: "center"
+            valign: "middle"
+    
+    # Retake Button (Fixed at bottom-center-left)
+    RoundedButton:
+        id: retake_button
+        size_hint: None, None
+        size: 120, 40
+        pos_hint: {"x": 0.30, "y": 0.02}
+        on_release: root.go_to_retake()
+        
+        BoxLayout:
+            orientation: "horizontal"
+            size: self.size
+            spacing: 8
+            padding: [8, 0, 8, 0]
+            pos_hint: {"center_y": 0.5}
+            size: retake_button.size
+            pos: retake_button.pos
+            
+            Image:
+                source: "app/assets/scan.png"
+                allow_stretch: True
+                keep_ratio: True
+                size_hint: None, None
+                size: 22, 22
+                pos_hint: {"center_y": 0.5}
+                mipmap: True
+            
+            Label:
+                text: "Retake"
+                color: 3/255, 30/255, 0/255, 1
+                font_size: 16
+                bold: True
+                size_hint_x: None
+                width: self.texture_size[0]
+                halign: "left"
+                valign: "middle"
+                pos_hint: {"center_y": 0.5}
+    
+    # View Info Button (Fixed at bottom-right)
+    RoundedButton:
+        id: view_info_button
+        size_hint: None, None
+        size: 140, 40
+        pos_hint: {"x": 0.58, "y": 0.02}
+        on_release: root.view_full_info()
+        
+        BoxLayout:
+            orientation: "horizontal"
+            size: self.size
+            spacing: 8
+            padding: [12, 0, 12, 0]
+            pos_hint: {"center_y": 0.5}
+            size: view_info_button.size
+            pos: view_info_button.pos
+            
+            Image:
+                source: "app/assets/result.png"
+                allow_stretch: True
+                keep_ratio: True
+                size_hint: None, None
+                size: 22, 22
+                pos_hint: {"center_y": 0.5}
+                mipmap: True
+            
+            Label:
+                text: "View Info"
+                color: 3/255, 30/255, 0/255, 1
+                font_size: 16
+                bold: True
+                size_hint_x: None
+                width: self.texture_size[0]
+                halign: "left"
+                valign: "middle"
+                pos_hint: {"center_y": 0.5}

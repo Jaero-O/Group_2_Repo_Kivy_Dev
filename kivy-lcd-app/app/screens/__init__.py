@@ -14,3 +14,6 @@ from .anthracnose_screen import AnthracnoseScreen
 from .system_spec_screen import SystemSpecScreen
 from .precaution_screen import PrecautionScreen
 from .about_us_screen import AboutUsScreen
+from .scan_detail_screen import ScanDetailScreen
+from .scan_list_screen import ScanListScreen
+
