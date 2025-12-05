@@ -4,6 +4,8 @@ from typing import Callable, List, Optional, Tuple
 from PIL import Image, ImageEnhance, ImageOps
 import numpy as np
 from multiprocessing import Process, Queue
+# from rembg.bg import remove
+
 
 # Try to import cv2 for hardware scanning (optional)
 try:
@@ -17,22 +19,20 @@ except ImportError:
 try:
     from picamera2 import Picamera2
     HAS_PICAMERA2 = True
+    print("boom shakaka camera")
 except ImportError:
     HAS_PICAMERA2 = False
     print("Picamera2 not available - using fallback mode")
 
 # Try to import rembg for background removal
-try:
-    from rembg import remove
-    HAS_REMBG = True
-except ImportError:
-    HAS_REMBG = False
-    print("rembg not available - background removal disabled")
+HAS_REMBG = False
+
 
 # Import motor controller
 try:
     from app.core.motor_controller import MotorController
     HAS_MOTOR = True
+    print("boom shakaka motor")
 except ImportError:
     HAS_MOTOR = False
     print("Motor controller not available")
@@ -69,6 +69,7 @@ class MultiFrameCapture:
             camera_resolution: Camera capture resolution (width, height)
             overlap_percentage: Overlap between adjacent frames for stitching (%)
         """
+        print("boom shakaka initializing")
         self.total_frames = total_frames
         self.retry_limit = retry_limit
         self.use_hardware = use_hardware and (HAS_PICAMERA2 or HAS_MOTOR)

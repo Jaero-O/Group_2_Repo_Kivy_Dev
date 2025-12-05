@@ -25,7 +25,9 @@ from app.screens import (
 # INITIAL SETUP
 # =========================================
 setup_window()
-
+Window.fullscreen = 'auto'   # Fullscreen
+Window.show_cursor = True    # Hide mouse cursor
+Window.rotation = 270          # Portrait orientation
 
 # =========================================
 # APP CLASS
