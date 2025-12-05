@@ -1,0 +1,50 @@
+{
+  "timestamp": "2025-11-24T14:19:03.413712",
+  "timings": {
+    "total": 40.51142859458923
+  },
+  "classification": {
+    "class": "Bacterial Canker",
+    "class_index": 1,
+    "confidence": 0.979745090007782,
+    "probabilities": {
+      "Anthracnose": 3.356887464178726e-05,
+      "Bacterial Canker": 0.979745090007782,
+      "Cutting Weevil": 2.3772736668092875e-08,
+      "Die Back": 3.6046958484803326e-07,
+      "Gall Midge": 3.853920861729421e-05,
+      "Healthy": 6.37159232041995e-08,
+      "Powdery Mildew": 0.001119408756494522,
+      "Sooty Mould": 0.019063007086515427
+    }
+  },
+  "analysis": {
+    "leaf_id": 1763965188,
+    "date_processed": "2025-11-24T14:19:48.864100",
+    "leaf_area_cm2": 30.040921984500002,
+    "lesion_area_cm2": 0.004407530400000001,
+    "severity_pct": 0.01467175475597627,
+    "lesion_count": 7,
+    "mean_lesion_size_px": 14.857142857142858,
+    "leaf_mean_r": 148.48368261044374,
+    "leaf_mean_g": 170.64490544477283,
+    "leaf_mean_b": 82.10906615691724,
+    "lesion_mean_r": 113.79807692307693,
+    "lesion_mean_g": 104.32692307692308,
+    "lesion_mean_b": 83.82692307692308,
+    "lesion_to_leaf_color_ratio_g": 0.6113685187671027,
+    "exg_mean": 110.69706212218468,
+    "ndvi_proxy_mean": 0.07544665056093915,
+    "leaf_solidity": 1.0002638790502612,
+    "leaf_circularity": 0.7162314730863333,
+    "leaf_aspect_ratio": 0.610248447204969,
+    "damage_pct_inpaint": 10.68809119059879,
+    "lesion_glcm_contrast": 0.09672544080604537,
+    "lesion_glcm_dissimilarity": 0.004296687969690032
+  },
+  "errors": [
+    "Homing failed",
+    "Homing failed"
+  ],
+  "status": "success"
+}
