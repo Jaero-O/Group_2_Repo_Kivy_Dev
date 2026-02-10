@@ -48,14 +48,64 @@ SCHEMA_STATEMENTS = [
         tree_id INTEGER REFERENCES tbl_tree(id) ON DELETE CASCADE,
         disease_id INTEGER REFERENCES tbl_disease(id) ON DELETE SET NULL,
         severity_level_id INTEGER REFERENCES tbl_severity_level(id) ON DELETE SET NULL,
-        severity_percentage REAL,
+        
+        -- Core scan metadata
+        scan_timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+        scan_duration REAL,
+        scan_status TEXT,
+        
+        -- Classification results
+        disease_class TEXT,
         confidence_score REAL,
-        total_leaf_area REAL,
-        lesion_area REAL,
+        pred_anthracnose REAL,
+        pred_healthy REAL,
+        pred_bacterial_canker REAL,
+        pred_cutting_weevil REAL,
+        pred_powdery_mildew REAL,
+        pred_sooty_mould REAL,
+        
+        -- Severity analysis
+        severity_percentage REAL,
+        severity_level TEXT,
+        
+        -- Leaf measurements
+        leaf_area_cm2 REAL,
+        lesion_area_cm2 REAL,
+        lesion_count INTEGER,
+        mean_lesion_size_px REAL,
+        
+        -- Color analysis - Leaf
+        leaf_mean_r REAL,
+        leaf_mean_g REAL,
+        leaf_mean_b REAL,
+        
+        -- Color analysis - Lesion
+        lesion_mean_r REAL,
+        lesion_mean_g REAL,
+        lesion_mean_b REAL,
+        lesion_to_leaf_color_ratio_g REAL,
+        
+        -- Vegetation indices
+        exg_mean REAL,
+        ndvi_proxy_mean REAL,
+        
+        -- Shape features
+        leaf_solidity REAL,
+        leaf_circularity REAL,
+        leaf_aspect_ratio REAL,
+        
+        -- Texture features
+        damage_pct_inpaint REAL,
+        lesion_glcm_contrast REAL,
+        lesion_glcm_dissimilarity REAL,
+        
+        -- File references
         image_path TEXT,
         thumbnail_path TEXT,
+        json_path TEXT,
+        
+        -- Metadata
         notes TEXT,
-        scan_timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
         is_archived INTEGER DEFAULT 0
     );
     """,

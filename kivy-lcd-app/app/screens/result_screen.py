@@ -21,16 +21,140 @@ class ResultScreen(Screen):
     confidence_badge_color = StringProperty("")
 
     def on_pre_enter(self, *args):
-        self._load_from_app_state()
+        self._load_from_database_or_app_state()
+
+    def _load_from_database_or_app_state(self):
+        """Load scan data from database if scan_id exists, otherwise from app.scan_result"""
+        app = App.get_running_app()
+        scan_id = getattr(app, 'current_scan_id', None)
+        
+        print(f"[ResultScreen] on_pre_enter: scan_id={scan_id}")
+        
+        if scan_id:
+            # Load from database using scan_id
+            print(f"[ResultScreen] Loading from database with scan_id={scan_id}")
+            self._load_from_database(scan_id)
+        else:
+            # Fall back to app.scan_result (for fresh scans)
+            print(f"[ResultScreen] Loading from app.scan_result")
+            self._load_from_app_state()
+    
+    def _load_from_database(self, scan_id):
+        """Load complete scan data from database by scan_id"""
+        db_path = os.getenv("MANGOFY_DB_PATH", os.path.join(os.getcwd(), "mangofy.db"))
+        try:
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            
+            # Query scan record with disease info
+            cur.execute("""
+                SELECT 
+                    sr.disease_class, sr.confidence_score, 
+                    sr.severity_percentage, sr.severity_level,
+                    sr.image_path, sr.scan_timestamp,
+                    d.name, d.description, d.symptoms, d.prevention
+                FROM tbl_scan_record sr
+                LEFT JOIN tbl_disease d ON sr.disease_id = d.id
+                WHERE sr.id = ?
+            """, (scan_id,))
+            
+            row = cur.fetchone()
+            conn.close()
+            
+            if row:
+                # Unpack database values
+                disease_class, confidence, severity_pct, severity_lvl, img_path, timestamp, \
+                    disease_name, description, symptoms, prevention = row
+                
+                # Set properties
+                self.prediction_label = disease_class or disease_name or "Unknown"
+                self.prediction_confidence = confidence or 0.0
+                self.severity_percentage = severity_pct or 0.0
+                self.severity_level = severity_lvl or "None"
+                
+                # Fix image path - convert relative to absolute if needed
+                if img_path:
+                    if not os.path.isabs(img_path):
+                        # Relative path from database (e.g., ../data/scans/...)
+                        # Convert to absolute from app root
+                        app_root = os.getcwd()
+                        abs_path = os.path.abspath(os.path.join(app_root, img_path))
+                        self.image_path = abs_path
+                        print(f"[ResultScreen] Image path: {img_path} -> {abs_path}")
+                        print(f"[ResultScreen] Image exists: {os.path.exists(abs_path)}")
+                    else:
+                        self.image_path = img_path
+                        print(f"[ResultScreen] Image path (absolute): {img_path}")
+                        print(f"[ResultScreen] Image exists: {os.path.exists(img_path)}")
+                else:
+                    self.image_path = ""
+                    print(f"[ResultScreen] No image path in database")
+                
+                # Set disease metadata
+                self.disease_description = description or ""
+                self.disease_symptoms = symptoms or ""
+                self.disease_prevention = prevention or ""
+                
+                # Format timestamp
+                if timestamp and timestamp != "N/A":
+                    try:
+                        from datetime import datetime
+                        if "T" in timestamp:
+                            dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                        else:
+                            dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+                        self.formatted_timestamp = dt.strftime("%B %d, %Y at %I:%M %p")
+                    except Exception as e:
+                        print(f"Timestamp parse error: {e}")
+                        self.formatted_timestamp = timestamp or "N/A"
+                else:
+                    self.formatted_timestamp = "N/A"
+                
+                # Update confidence badge
+                self._update_confidence_badge(self.prediction_confidence)
+                
+                print(f"[ResultScreen] Loaded from DB: {self.prediction_label}, {self.prediction_confidence:.2%}, {self.severity_level}")
+            else:
+                print(f"[ResultScreen] No data found for scan_id={scan_id}")
+                self._set_defaults()
+                
+        except Exception as e:
+            print(f"[ResultScreen] Database load error: {e}")
+            import traceback
+            traceback.print_exc()
+            self._set_defaults()
+    
+    def _set_defaults(self):
+        """Set default empty values"""
+        self.prediction_label = "Unknown"
+        self.prediction_confidence = 0.0
+        self.severity_percentage = 0.0
+        self.severity_level = "None"
+        self.image_path = ""
+        self.disease_description = ""
+        self.disease_symptoms = ""
+        self.disease_prevention = ""
+        self.formatted_timestamp = "N/A"
+        self.confidence_badge_text = "No Data"
+        self.confidence_badge_color = "#808080"
 
     def _load_from_app_state(self):
         app = App.get_running_app()
         data = getattr(app, "scan_result", {}) or {}
+        
+        print(f"[ResultScreen] app.scan_result data: {data}")
+        
         self.prediction_label = data.get("label") or ""
         self.prediction_confidence = data.get("confidence") or 0.0
         self.severity_percentage = data.get("severity_percentage") or 0.0
-        self.image_path = data.get("image_path") or ""
-        self.severity_level = data.get("severity_level") or "Unknown"
+        self.severity_level = data.get("severity_level") or "None"
+        
+        # Set image path
+        image_path = data.get("image_path") or ""
+        self.image_path = image_path
+        
+        print(f"[ResultScreen] Loaded from app state: {self.prediction_label}, {self.prediction_confidence:.2%}, image={self.image_path}")
+        print(f"[ResultScreen] Image exists: {os.path.exists(self.image_path) if self.image_path else False}")
         
         # Set confidence badge
         self._update_confidence_badge(self.prediction_confidence)
@@ -40,9 +164,14 @@ class ResultScreen(Screen):
         if timestamp != "N/A":
             try:
                 from datetime import datetime
-                dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
+                # Try ISO format first (from scan results)
+                if "T" in timestamp:
+                    dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+                else:
+                    dt = datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S")
                 self.formatted_timestamp = dt.strftime("%B %d, %Y at %I:%M %p")
-            except:
+            except Exception as e:
+                print(f"Timestamp parse error: {e}")
                 self.formatted_timestamp = timestamp
         else:
             self.formatted_timestamp = "N/A"

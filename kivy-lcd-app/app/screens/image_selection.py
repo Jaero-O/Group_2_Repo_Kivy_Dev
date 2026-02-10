@@ -20,16 +20,22 @@ class RecycleViewImage(Image):
             app = App.get_running_app()
             app.last_screen = 'image_select'
             
-            # Populate app.scan_result with the scan data
-            # Note: confidence is not stored in DB, using 0.0 as placeholder
-            app.scan_result = {
-                "label": self.scan_data.get("disease_name") or "",
-                "confidence": 0.0,  # Not stored in database
-                "severity_percentage": self.scan_data.get("severity_percentage") or 0.0,
-                "image_path": self.scan_data.get("image_path") or "",
-                "severity_level": self.scan_data.get("severity_name") or "Unknown",
-                "scan_timestamp": self.scan_data.get("scan_timestamp") or "N/A",
-            }
+            # Set the scan_id so ResultScreen loads from database
+            scan_id = self.scan_data.get("id")
+            if scan_id:
+                app.current_scan_id = scan_id
+                print(f"[RecycleViewImage] Selected scan_id={scan_id}")
+            else:
+                # Fallback to old behavior if no scan_id (shouldn't happen)
+                app.current_scan_id = None
+                app.scan_result = {
+                    "label": self.scan_data.get("disease_name") or "",
+                    "confidence": 0.0,
+                    "severity_percentage": self.scan_data.get("severity_percentage") or 0.0,
+                    "image_path": self.scan_data.get("image_path") or "",
+                    "severity_level": self.scan_data.get("severity_name") or "Unknown",
+                    "scan_timestamp": self.scan_data.get("scan_timestamp") or "N/A",
+                }
             
             app.root.current = 'result'
             return True

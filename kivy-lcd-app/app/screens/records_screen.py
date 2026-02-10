@@ -304,6 +304,10 @@ class RecordsScreen(Screen):
         """Enable editing mode for tree name (DB-backed)."""
         if card.is_editing:
             return
+        # Prevent editing special entries like "Unassigned Scans"
+        if not hasattr(card, 'tree_id') or card.tree_id is None:
+            self.show_notification("Cannot edit this entry")
+            return
         from app.core.db import update_tree_name, get_tree_by_name
         card.is_editing = True
         original_name = card.tree_name
@@ -339,7 +343,18 @@ class RecordsScreen(Screen):
                 card.tree_name = new_name
                 label.text = new_name
                 self.show_notification(f"Renamed to '{new_name}'")
+                # Update the tree name in both lists
+                for t in self.trees:
+                    if t.get("id") == card.tree_id:
+                        t["name"] = new_name
+                        break
+                for t in self.filtered_trees:
+                    if t.get("id") == card.tree_id:
+                        t["name"] = new_name
+                        break
                 self.total_scan_count = sum(t["count"] for t in self.trees)
+            else:
+                self.show_notification("Failed to rename tree")
             cancel_edit()
 
         edit_input.bind(on_text_validate=save_edit)
@@ -348,6 +363,10 @@ class RecordsScreen(Screen):
 
     def confirm_delete(self, card):
         """Show confirmation dialog before deleting (DB-backed)."""
+        # Prevent deleting special entries like "Unassigned Scans"
+        if not hasattr(card, 'tree_id') or card.tree_id is None:
+            self.show_notification("Cannot delete this entry")
+            return
         from kivy.factory import Factory
         from app.core.db import delete_tree
         
@@ -369,6 +388,8 @@ class RecordsScreen(Screen):
                 self.trees = [t for t in self.trees if t["id"] != card.tree_id]
                 self.filtered_trees = [t for t in self.filtered_trees if t["id"] != card.tree_id]
                 self.total_scan_count = sum(t["count"] for t in self.trees)
+            else:
+                self.show_notification("Failed to delete tree")
             close_modal()
             self.hide_action_buttons()
             self.active_card = None

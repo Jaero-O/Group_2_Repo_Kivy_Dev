@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-01-08T04:45:03.402794",
+  "timings": {
+    "total": 28.726648330688477
+  },
+  "classification": {
+    "class": "Sooty Mould",
+    "class_index": 7,
+    "confidence": 0.2321726530790329,
+    "probabilities": {
+      "Anthracnose": 0.027063874527812004,
+      "Bacterial Canker": 0.16702662408351898,
+      "Cutting Weevil": 0.2244829386472702,
+      "Die Back": 0.07007405906915665,
+      "Gall Midge": 0.0647696927189827,
+      "Healthy": 0.07988561689853668,
+      "Powdery Mildew": 0.13452449440956116,
+      "Sooty Mould": 0.2321726530790329
+    }
+  },
+  "analysis": null,
+  "errors": [],
+  "status": "success",
+  "database_id": 16
+}

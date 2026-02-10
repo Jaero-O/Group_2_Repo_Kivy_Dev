@@ -1,15 +1,15 @@
 #:kivy 2.0.0
 
 <ResultScreen>:
+    # Main Background
     canvas.before:
-        # Main background color and texture
         Color:
             rgba: 248/255, 248/255, 248/255, 1
         Rectangle:
             pos: self.pos
             size: self.size
 
-    # Header Section (Fixed at top)
+    # Header Section
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
@@ -17,15 +17,13 @@
         width: self.parent.width
         pos_hint: {"x": 0.06, "y": 0.92}
         spacing: 5.3
-        valign: "left"
 
         Image:
-            source: "/home/kennethbinasa/kivy_v1/kivy-lcd-app/output_image_reduced.png"
+            source: "app/assets/result.png"
             size_hint: None, None
             size: 35, 35
             allow_stretch: True
             keep_ratio: True
-            color: (6/255, 87/255, 6/255, 1)
             mipmap: True
 
     BoxLayout:
@@ -35,7 +33,6 @@
         width: self.parent.width
         pos_hint: {"x": 0.17, "y": 0.91}
         spacing: 5.3
-        valign: "left"
 
         Label:
             text: "Result" if not root.prediction_label else ("Result · " + str(root.prediction_label))
@@ -46,7 +43,7 @@
             halign: "left"
             text_size: self.size
 
-    # Back Button (Fixed at top)
+    # Back Button
     RoundedButton:
         id: back_button
         size_hint: None, None
@@ -83,10 +80,10 @@
                 valign: "middle"
                 pos_hint: {"center_y": 0.5}
 
-    # Scrollable Content Area
+    # Content Area Section
     ScrollView:
         size_hint: 1, None
-        height: root.height * 0.85
+        height: root.height * 0.88
         pos_hint: {"center_x": 0.5, "y": 0.0}
         do_scroll_x: False
         do_scroll_y: True
@@ -102,32 +99,27 @@
             padding: [30, 20, 30, 30]
             spacing: 30
 
-            # Image Display Area
+            # Image Display Card
             BoxLayout:
                 orientation: "vertical"
                 size_hint: 1, None
                 height: 500
                 padding: [10, 10, 10, 10]
 
-                # Shadow
                 canvas.before:
                     Color:
                         rgba: 0, 0, 0, 0.15
                     RoundedRectangle:
                         pos: self.x + 2.6, self.y - 3.1
                         size: self.size
-                        radius: [15, 15, 15, 15]
-
-                # Background
-                canvas:
+                        radius: [15]
                     Color:
                         rgba: 0.93, 0.95, 0.93, 1
                     RoundedRectangle:
                         pos: self.pos
                         size: self.size
-                        radius: [15, 15, 15, 15]
+                        radius: [15]
                 
-                # Display the scanned image
                 Image:
                     source: root.image_path if root.image_path else ""
                     allow_stretch: False
@@ -139,16 +131,14 @@
                 size_hint: 1, None
                 height: self.minimum_height
                 spacing: 15
-                padding: [0, 0, 0, 0]
 
-                # Percentage and Tag Row
+                # Percentage and Severity Tag Row
                 BoxLayout:
                     orientation: "horizontal"
                     size_hint: 1, None
                     height: 80
                     spacing: 10
 
-                    # Healthy Percentage
                     Label:
                         text: str(int(root.severity_percentage)) + "%"
                         color: (38/255, 164/255, 33/255, 1) if root.severity_level.lower() == 'healthy' else (207/255,191/255,44/255,1) if root.severity_level.lower() == 'moderate' else (221/255,45/255,29/255,1)
@@ -159,26 +149,6 @@
                         halign: "left"
                         valign: "middle"
 
-                    # Moderate Percentage
-                    # Label:
-                    #     text: "67%"
-                    #     color: 207/255, 191/255, 44/255, 1
-                    #     font_size: 64
-                    #     bold: True
-                    #     size_hint: None, None
-                    #     size: self.texture_size
-                    #     pos_hint: {"x": 0.0, "y": 0.90}   
-
-                    # Anthracnose Percentage
-                    # Label:
-                    #     text: "15%"
-                    #     color: 221/255, 45/255, 29/255, 1
-                    #     font_size: 64
-                    #     bold: True
-                    #     size_hint: None, None
-                    #     size: self.texture_size
-                    #     pos_hint: {"x": 0.0, "y": 0.90}
-
                     Widget:
                         size_hint_x: 1
 
@@ -187,10 +157,9 @@
                         size: 140, 30
                         pos_hint: {"center_y": 0.8}
                     
-                        # Healthy Tag
                         canvas.before:
                             Color:
-                                rgba: 201/255, 255/255, 142/255, 1
+                                rgba: (201/255, 255/255, 142/255, 1) if root.severity_level.lower() == 'healthy' else (255/255, 246/255, 149/255, 1) if root.severity_level.lower() == 'moderate' else (255/255, 180/255, 168/255, 1)
                             RoundedRectangle:
                                 pos: self.pos
                                 size: self.size
@@ -204,44 +173,8 @@
                             valign: "middle"
                             halign: "center"
                             text_size: self.size
-                        
-                        # Moderate Tag
-                        # canvas.before:
-                        #     Color:
-                        #         rgba: 255/255, 246/255, 149/255, 1
-                        #     RoundedRectangle:
-                        #         pos: self.pos
-                        #         size: self.size
-                        #         radius: [8]
 
-                        # Label:
-                        #     text: "Moderate"
-                        #     color: 99/255, 91/255, 1/255, 1
-                        #     font_size: 16
-                        #     bold: True
-                        #     valign: "middle"
-                        #     halign: "center"
-                        #     text_size: self.size
-                        
-                        # Anthracnose Tag
-                        # canvas.before:
-                        #     Color:
-                        #         rgba: 255/255, 180/255, 168/255, 1
-                        #     RoundedRectangle:
-                        #         pos: self.pos
-                        #         size: self.size
-                        #         radius: [8]
-
-                        # Label:
-                        #     text: "ANTHRACNOSE"
-                        #     color: 150/255, 22/255, 3/255, 1
-                        #     font_size: 16
-                        #     bold: True
-                        #     valign: "middle"
-                        #     halign: "center"
-                        #     text_size: self.size
-
-                # Severity Level
+                # Severity Level Label
                 Label:
                     text: "SEVERITY LEVEL" if root.severity_level else "SEVERITY LEVEL (N/A)"
                     color: 100/255, 100/255, 100/255, 1
@@ -276,7 +209,7 @@
                     valign: "top"
                     text_size: self.width, None
 
-                # Disease Details Section (Symptoms / Prevention)
+                # Disease Details Section
                 BoxLayout:
                     orientation: 'vertical'
                     size_hint: 1, None
@@ -352,99 +285,103 @@
                         halign: "left"
                         valign: "middle"
                         text_size: self.width, None
-    
-    # Confidence Badge (Fixed at bottom-left)
-    BoxLayout:
-        size_hint: None, None
-        size: 180, 32
-        pos_hint: {"x": 0.05, "y": 0.025}
-        
-        canvas.before:
-            Color:
-                rgba: app.get_color_from_hex(root.confidence_badge_color) if root.confidence_badge_color else (0.5, 0.5, 0.5, 1)
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [8]
-        
-        Label:
-            text: root.confidence_badge_text
-            color: 1, 1, 1, 1
-            font_size: 13
-            bold: True
-            halign: "center"
-            valign: "middle"
-    
-    # Retake Button (Fixed at bottom-center-left)
-    RoundedButton:
-        id: retake_button
-        size_hint: None, None
-        size: 120, 40
-        pos_hint: {"x": 0.30, "y": 0.02}
-        on_release: root.go_to_retake()
-        
-        BoxLayout:
-            orientation: "horizontal"
-            size: self.size
-            spacing: 8
-            padding: [8, 0, 8, 0]
-            pos_hint: {"center_y": 0.5}
-            size: retake_button.size
-            pos: retake_button.pos
-            
-            Image:
-                source: "app/assets/scan.png"
-                allow_stretch: True
-                keep_ratio: True
-                size_hint: None, None
-                size: 22, 22
-                pos_hint: {"center_y": 0.5}
-                mipmap: True
-            
-            Label:
-                text: "Retake"
-                color: 3/255, 30/255, 0/255, 1
-                font_size: 16
-                bold: True
-                size_hint_x: None
-                width: self.texture_size[0]
-                halign: "left"
-                valign: "middle"
-                pos_hint: {"center_y": 0.5}
-    
-    # View Info Button (Fixed at bottom-right)
-    RoundedButton:
-        id: view_info_button
-        size_hint: None, None
-        size: 140, 40
-        pos_hint: {"x": 0.58, "y": 0.02}
-        on_release: root.view_full_info()
-        
-        BoxLayout:
-            orientation: "horizontal"
-            size: self.size
-            spacing: 8
-            padding: [12, 0, 12, 0]
-            pos_hint: {"center_y": 0.5}
-            size: view_info_button.size
-            pos: view_info_button.pos
-            
-            Image:
-                source: "app/assets/result.png"
-                allow_stretch: True
-                keep_ratio: True
-                size_hint: None, None
-                size: 22, 22
-                pos_hint: {"center_y": 0.5}
-                mipmap: True
-            
-            Label:
-                text: "View Info"
-                color: 3/255, 30/255, 0/255, 1
-                font_size: 16
-                bold: True
-                size_hint_x: None
-                width: self.texture_size[0]
-                halign: "left"
-                valign: "middle"
-                pos_hint: {"center_y": 0.5}
+
+                # Bottom Action Bar
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 60
+                    spacing: 15
+                    padding: [0, 20, 0, 0]
+
+                    # Confidence Badge
+                    BoxLayout:
+                        size_hint: None, None
+                        size: 180, 40
+                        
+                        canvas.before:
+                            Color:
+                                rgba: app.get_color_from_hex(root.confidence_badge_color) if root.confidence_badge_color else (0.5, 0.5, 0.5, 1)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [8]
+                        
+                        Label:
+                            text: root.confidence_badge_text
+                            color: 1, 1, 1, 1
+                            font_size: 13
+                            bold: True
+                            halign: "center"
+                            valign: "middle"
+
+                    Widget:
+                        size_hint_x: 1
+
+                    # Retake Button
+                    RoundedButton:
+                        id: retake_button
+                        size_hint: None, None
+                        size: 120, 40
+                        on_release: root.go_to_retake()
+                        
+                        BoxLayout:
+                            orientation: "horizontal"
+                            size: self.parent.size
+                            pos: self.parent.pos
+                            spacing: 8
+                            padding: [8, 0, 8, 0]
+                            
+                            Image:
+                                source: "app/assets/scan.png"
+                                allow_stretch: True
+                                keep_ratio: True
+                                size_hint: None, None
+                                size: 22, 22
+                                pos_hint: {"center_y": 0.5}
+                                mipmap: True
+                            
+                            Label:
+                                text: "Retake"
+                                color: 3/255, 30/255, 0/255, 1
+                                font_size: 16
+                                bold: True
+                                size_hint_x: None
+                                width: self.texture_size[0]
+                                halign: "left"
+                                valign: "middle"
+                                pos_hint: {"center_y": 0.5}
+
+                    # View Info Button
+                    RoundedButton:
+                        id: view_info_button
+                        size_hint: None, None
+                        size: 140, 40
+                        on_release: root.view_full_info()
+                        
+                        BoxLayout:
+                            orientation: "horizontal"
+                            size: self.parent.size
+                            pos: self.parent.pos
+                            spacing: 8
+                            padding: [12, 0, 12, 0]
+                            
+                            Image:
+                                source: "app/assets/result.png"
+                                allow_stretch: True
+                                keep_ratio: True
+                                size_hint: None, None
+                                size: 22, 22
+                                pos_hint: {"center_y": 0.5}
+                                mipmap: True
+                            
+                            Label:
+                                text: "View Info"
+                                color: 3/255, 30/255, 0/255, 1
+                                font_size: 16
+                                bold: True
+                                size_hint_x: None
+                                width: self.texture_size[0]
+                                halign: "left"
+                                valign: "middle"
+                                pos_hint: {"center_y": 0.5}
