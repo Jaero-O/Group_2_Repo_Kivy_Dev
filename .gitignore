@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+# Virtual environments
+.venv/
+venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Byte-compiled / caching
+*.pyc
+.pytest_cache/
+
+# IDE
+.vscode/
+*.sublime-workspace
+
+# Jupyter
+*.ipynb_checkpoints
+
+# Artifacts and run outputs
+artifacts/
+exports/
+screenshots/current/
+screenshots/current_alt/
+screenshots/current_figma/
+screenshots/diff_overlays/
+
+# Logs
+*.log
+
+# Do NOT ignore the sqlite DB here intentionally so it is committed
+# mangofy.db
+populated_mangofy.db
+
+# Temporary
+*.tmp
+*.bak
+~$

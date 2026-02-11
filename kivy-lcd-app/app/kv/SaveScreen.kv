@@ -54,7 +54,7 @@
         spacing: 5
 
         Label:  # main header label
-            text: "Save"
+            text: "Save" if not root.selected_tree else ("Save · " + str(root.selected_tree))
             color: 3/255, 30/255, 0/255, 1
             font_size: 34
             bold: True

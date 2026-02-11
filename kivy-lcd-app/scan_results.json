@@ -1,0 +1,24 @@
+{
+  "timestamp": "2026-01-06T18:36:22.050121",
+  "timings": {
+    "total": 29.45686411857605
+  },
+  "classification": {
+    "class": "Bacterial Canker",
+    "class_index": 1,
+    "confidence": 0.4636763334274292,
+    "probabilities": {
+      "Anthracnose": 0.010445849038660526,
+      "Bacterial Canker": 0.4636763334274292,
+      "Cutting Weevil": 0.15916410088539124,
+      "Die Back": 0.06805308163166046,
+      "Gall Midge": 0.03259183093905449,
+      "Healthy": 0.0424191914498806,
+      "Powdery Mildew": 0.11535362899303436,
+      "Sooty Mould": 0.1082959771156311
+    }
+  },
+  "analysis": null,
+  "errors": [],
+  "status": "success"
+}

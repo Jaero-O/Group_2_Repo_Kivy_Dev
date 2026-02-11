@@ -84,107 +84,169 @@
 
     # Image Gallery Section
     ScrollView:
+        id: scroll_view
         size_hint: (1, None)
-        height: root.height * 0.82
+        height: root.height * 0.74
         pos_hint: {"x": 0, "y": 0.04}
         bar_width: 8
         do_scroll_x: False
 
-        GridLayout:
-            id: image_grid
-            cols: 3
-            spacing: [2, 2]
-            padding: [0, 0, 0, 0]
+        BoxLayout:
+            orientation: 'vertical'
             size_hint_y: None
             height: self.minimum_height
+            spacing: 8
 
-            # 21 placeholder images
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
-            RecycleViewImage:
-                source: "app/assets/placeholder_gallery.png"
-                size_hint: None, None
-                size: 156, 133
+            Label:
+                id: empty_label
+                text: ''
+                color: 0,0,0,0.6
+                font_size: 16
+                bold: True
+                size_hint_y: None
+                height: 20
+                halign: 'center'
+                valign: 'middle'
+                text_size: self.width, None
 
-    # Filter Bar Sectiom
+            GridLayout:
+                id: image_grid
+                cols: 3
+                spacing: [2, 2]
+                padding: [0, 0, 0, 0]
+                size_hint_y: None
+                height: self.minimum_height
+
+            # Load More Button
+            Button:
+                id: load_more_btn
+                text: "Load More"
+                size_hint_y: None
+                height: 44
+                font_size: 15
+                bold: True
+                background_normal: ''
+                background_color: 6/255, 87/255, 6/255, 1
+                color: 1, 1, 1, 1
+                opacity: 1 if root.has_more else 0
+                disabled: not root.has_more
+                on_release: root.load_more()
+
+    # Enhanced Filter Section - Second Row (Disease, Date, Sort, Calendar)
+    FloatLayout:
+        size_hint: None, None
+        size: 430, 40
+        pos_hint: {"center_x": 0.5, "y": 0.79}
+
+        # White background with rounded corners
+        canvas.before:
+            Color:
+                rgba: 1, 1, 1, 0.95
+            RoundedRectangle:
+                pos: self.pos
+                size: self.size
+                radius: [8, 8, 8, 8]
+
+        BoxLayout:
+            orientation: "horizontal"
+            size_hint: None, None
+            size: 426, 36
+            spacing: 4
+            padding: [4, 2, 4, 2]
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+
+            Button:
+                id: disease_btn
+                text: "Disease: All Diseases ▼"
+                background_normal: ''
+                background_color: 248/255, 248/255, 248/255, 1
+                color: 3/255, 30/255, 0/255, 1
+                bold: True
+                font_size: 11
+                size_hint_x: 0.35
+                on_release: root.show_disease_dropdown()
+                text_size: self.size
+                halign: 'center'
+                valign: 'middle'
+                shorten: True
+                shorten_from: 'right'
+                
+                canvas.before:
+                    Color:
+                        rgba: 220/255, 220/255, 220/255, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [6]
+
+            Button:
+                id: date_btn
+                text: "Date: All Time ▼"
+                background_normal: ''
+                background_color: 248/255, 248/255, 248/255, 1
+                color: 3/255, 30/255, 0/255, 1
+                bold: True
+                font_size: 11
+                size_hint_x: 0.30
+                on_release: root.show_date_dropdown()
+                text_size: self.size
+                halign: 'center'
+                valign: 'middle'
+                shorten: True
+                shorten_from: 'right'
+                
+                canvas.before:
+                    Color:
+                        rgba: 220/255, 220/255, 220/255, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [6]
+
+            Button:
+                id: sort_btn
+                text: "Sort: Newest First ▼"
+                background_normal: ''
+                background_color: 248/255, 248/255, 248/255, 1
+                color: 3/255, 30/255, 0/255, 1
+                bold: True
+                font_size: 11
+                size_hint_x: 0.25
+                on_release: root.show_sort_dropdown()
+                text_size: self.size
+                halign: 'center'
+                valign: 'middle'
+                shorten: True
+                shorten_from: 'right'
+                
+                canvas.before:
+                    Color:
+                        rgba: 220/255, 220/255, 220/255, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [6]
+
+            Button:
+                id: calendar_btn
+                text: "📅"
+                background_normal: ''
+                background_color: 6/255, 87/255, 6/255, 1
+                color: 1, 1, 1, 1
+                bold: True
+                font_size: 16
+                size_hint_x: 0.10
+                on_release: root.open_custom_date_picker()
+                
+                canvas.before:
+                    Color:
+                        rgba: 6/255, 87/255, 6/255, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [6]
+
+    # Time Filter Bar Section (Years/Months/Days/All Photos)
     FloatLayout:
         size_hint: None, None
         size: 418, 36
