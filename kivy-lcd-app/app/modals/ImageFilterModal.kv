@@ -1,0 +1,56 @@
+#:kivy 2.0.0
+
+<FilterOptionBtn>:
+    background_normal: ""
+    background_down: ""
+    background_color: 0, 0, 0, 0
+    color: 3/255, 33/255, 0/255, 1
+    font_size: 15
+    bold: True
+    size_hint_y: None
+    height: 44
+    halign: "center"
+    valign: "middle"
+    text_size: self.size
+
+    canvas.before:
+        Color:
+            rgba: (210/255, 235/255, 210/255, 1) if self.state == 'down' else (235/255, 245/255, 235/255, self.hl_alpha)
+        RoundedRectangle:
+            pos: self.pos
+            size: self.size
+            radius: [8]
+
+
+<FilterCancelBtn>:
+    background_normal: ""
+    background_down: ""
+    background_color: 0, 0, 0, 0
+    color: (0/255, 36/255, 0/255, 1) if self.state == 'down' else (0/255, 56/255, 0/255, 1)
+    font_size: 14
+    bold: True
+    size_hint_y: None
+    height: 38
+
+    canvas.before:
+        # Shadow
+        Color:
+            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.15)
+        RoundedRectangle:
+            radius: [7]
+            pos: self.x + 1, self.y - 3
+            size: self.size
+        # Bottom edge
+        Color:
+            rgba: (0, 0, 0, 0) if self.state == 'down' else (180/255, 180/255, 180/255, 1)
+        RoundedRectangle:
+            radius: [7]
+            pos: self.x, self.y - 2
+            size: self.size
+        # Main face
+        Color:
+            rgba: (220/255, 220/255, 220/255, 1) if self.state == 'down' else (241/255, 241/255, 241/255, 1)
+        RoundedRectangle:
+            radius: [7]
+            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+            size: self.size

@@ -1,0 +1,134 @@
+#:kivy 2.0.0
+
+<ScanningModal>:
+    size_hint: None, None
+    size: 480, 800
+    auto_dismiss: False
+    background: ""
+    background_color: 0, 0, 0, 0
+    overlay_color: 0, 0, 0, 0.7
+
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: 0, 0, 0, 0.7
+            Rectangle:
+                pos: root.pos
+                size: root.size
+
+        # White rounded panel — same as GuideModal / SaveModal
+        canvas:
+            Color:
+                rgba: 1, 1, 1, 1
+            RoundedRectangle:
+                pos: root.x + 24, root.center_y - (root.height * 0.68 / 2)
+                size: root.width - 48, root.height * 0.68
+                radius: [40, 40, 40, 40]
+            Color:
+                rgba: 0, 0, 0, 0.05
+            Line:
+                rounded_rectangle: (root.x + 24, root.center_y - (root.height * 0.68 / 2), root.width - 48, root.height * 0.68, 40)
+                width: 1.3
+
+        # ── Content inside the panel ──────────────────────────────────────
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint: None, None
+            size: root.width - 48, root.height * 0.68
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            padding: [36, 40, 36, 36]
+            spacing: 20
+
+            # Spacer top
+            Widget:
+                size_hint_y: 1
+
+            # Status text
+            Label:
+                text: root.status_text
+                font_size: 18
+                bold: True
+                color: 3/255, 30/255, 0/255, 1
+                size_hint_y: None
+                height: self.texture_size[1]
+                halign: 'center'
+                valign: 'middle'
+                text_size: self.width, None
+
+            # Percentage label
+            Label:
+                text: f"{int(root.progress_pct)}%"
+                font_size: 32
+                bold: True
+                color: 0/255, 152/255, 0/255, 1
+                size_hint_y: None
+                height: self.texture_size[1]
+                halign: 'center'
+                valign: 'middle'
+                text_size: self.width, None
+
+            # Progress bar
+            Widget:
+                size_hint_y: None
+                height: 24
+
+                canvas.before:
+                    Color:
+                        rgba: 224/255, 223/255, 223/255, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [12]
+
+                canvas:
+                    Color:
+                        rgba: 0/255, 152/255, 0/255, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: max(self.height, self.width * (root.progress_pct / 100.0)), self.height
+                        radius: [12]
+
+            # Spacer bottom
+            Widget:
+                size_hint_y: 1
+
+            # Cancel button
+            FloatLayout:
+                size_hint: None, None
+                size: 56, 60
+                pos_hint: {"center_x": 0.5}
+
+                Button:
+                    id: cancel_btn
+                    size_hint: None, None
+                    size: 56, 56
+                    pos_hint: {"center_x": 0.5, "y": 0}
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    on_press: root.cancel_scan()
+
+                    canvas.before:
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.25)
+                        Ellipse:
+                            pos: self.x + 1, self.y - 4
+                            size: self.size
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (160/255, 20/255, 5/255, 1)
+                        Ellipse:
+                            pos: self.x, self.y - 2
+                            size: self.size
+                        Color:
+                            rgba: (160/255, 20/255, 5/255, 1) if self.state == 'down' else (220/255, 41/255, 14/255, 1)
+                        Ellipse:
+                            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                            size: self.size
+
+                Image:
+                    source: "app/assets/cancel_white.png"
+                    size_hint: None, None
+                    size: 24, 24
+                    pos_hint: {"center_x": 0.5, "center_y": 0.52}
+                    allow_stretch: True
+                    keep_ratio: True
+                    mipmap: True

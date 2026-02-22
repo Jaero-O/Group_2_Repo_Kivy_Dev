@@ -15,19 +15,18 @@ from app.core import setup_window, BASE_WIDTH, BASE_HEIGHT
 # Screen imports
 from app.screens import (
     WelcomeScreen, HomeScreen, ScanScreen, RecordsScreen,
-    ShareScreen, HelpScreen, GuideScreen, ScanningScreen,
-    CaptureResultScreen, ResultScreen, SaveScreen, ImageSelection,
-    AnthracnoseScreen, SystemSpecScreen, PrecautionScreen, AboutUsScreen,
-    ScanDetailScreen, ScanListScreen
+    ShareScreen, HelpScreen, CaptureResultScreen, 
+    ResultScreen, ImageSelection, AnthracnoseScreen, SystemSpecScreen, 
+    PrecautionScreen, AboutUsScreen, ScanDetailScreen, ScanListScreen
 )
 
 # =========================================
 # INITIAL SETUP
 # =========================================
-setup_window()
-Window.fullscreen = 'auto'   # Fullscreen
-Window.show_cursor = True    # Hide mouse cursor
-Window.rotation = 270          # Portrait orientation
+# setup_window()
+# Window.fullscreen = False   # Fullscreen
+# Window.show_cursor = True    # Hide mouse cursor
+# Window.rotation = 270          # Portrait orientation
 
 # =========================================
 # APP CLASS
@@ -43,12 +42,10 @@ class MangofyApp(App):
 
         # Load all KV files from /app/kv/
         kv_files = [
-            "WelcomeScreen.kv", "HomeScreen.kv", "ScanScreen.kv",
-            "RecordsScreen.kv", "ShareScreen.kv", "HelpScreen.kv",
-            "GuideScreen.kv", "ScanningScreen.kv", "CaptureResultScreen.kv",
-            "ResultScreen.kv", "SaveScreen.kv", "ImageSelection.kv",
-            "AnthracnoseScreen.kv", "SystemSpecScreen.kv", "PrecautionScreen.kv",
-            "AboutUsScreen.kv", "ScanDetailScreen.kv", "ScanListScreen.kv"
+            "WelcomeScreen.kv", "HomeScreen.kv", "ScanScreen.kv", "RecordsScreen.kv", 
+            "ShareScreen.kv", "HelpScreen.kv", "CaptureResultScreen.kv",
+            "ResultScreen.kv", "ImageSelection.kv", "AnthracnoseScreen.kv", "SystemSpecScreen.kv", 
+            "PrecautionScreen.kv", "AboutUsScreen.kv", "ScanDetailScreen.kv", "ScanListScreen.kv"
         ]
         for kv in kv_files:
             kv_path = os.path.join(kv_dir, kv)
@@ -60,15 +57,10 @@ class MangofyApp(App):
         # Setup ScreenManager
         sm = ScreenManager(transition=FadeTransition(duration=0.1))
         for scr, name in [
-            (WelcomeScreen, 'welcome'), (HomeScreen, 'home'),
-            (ScanScreen, 'scan'), (RecordsScreen, 'records'),
-            (ShareScreen, 'share'), (HelpScreen, 'help'),
-            (GuideScreen, 'guide'), (ScanningScreen, 'scanning'),
-            (CaptureResultScreen, 'capture_result'), (ResultScreen, 'result'),
-            (SaveScreen, 'save'), (ImageSelection, 'image_select'),
-            (AnthracnoseScreen, 'anthracnose'), (SystemSpecScreen, 'system_spec'),
-            (PrecautionScreen, 'precaution'), (AboutUsScreen, 'about_us'),
-            (ScanDetailScreen, 'scan_detail'), (ScanListScreen, 'scan_list')
+            (WelcomeScreen, 'welcome'), (HomeScreen, 'home'), (ScanScreen, 'scan'), (RecordsScreen, 'records'),
+            (ShareScreen, 'share'), (HelpScreen, 'help'), (CaptureResultScreen, 'capture_result'), 
+            (ResultScreen, 'result'), (ImageSelection, 'image_select'), (AnthracnoseScreen, 'anthracnose'), (SystemSpecScreen, 'system_spec'),
+            (PrecautionScreen, 'precaution'), (AboutUsScreen, 'about_us'), (ScanDetailScreen, 'scan_detail'), (ScanListScreen, 'scan_list')
         ]:
             sm.add_widget(scr(name=name))
 

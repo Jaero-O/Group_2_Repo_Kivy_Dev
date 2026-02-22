@@ -56,7 +56,7 @@
         spacing: 5.3
 
         Label:
-            text: "Records" if root.total_scan_count == 0 else ("Records · " + str(root.total_scan_count))
+            text: "Records"
             color: 3/255, 30/255, 0/255, 1
             font_size: 32
             bold: True
@@ -94,43 +94,6 @@
                 text: "Back"
                 color: 3/255, 30/255, 0/255, 1
                 font_size: 16
-                bold: True
-                size_hint_x: None
-                width: self.texture_size[0]
-                halign: "left"
-                valign: "middle"
-                pos_hint: {"center_y": 0.5}
-    
-    # Export Button
-    RoundedButton:
-        id: export_button
-        size_hint: None, None
-        size: 110, 36
-        pos_hint: {"x": 0.66, "y": 0.915}
-        on_release: root.export_all_scans()
-        
-        BoxLayout:
-            orientation: "horizontal"
-            size: self.size
-            spacing: 6
-            padding: [8, 0, 8, 0]
-            pos_hint: {"center_y": 0.5}
-            size: export_button.size
-            pos: export_button.pos
-            
-            Image:
-                source: "app/assets/save.png"
-                allow_stretch: True
-                keep_ratio: True
-                size_hint: None, None
-                size: 18, 18
-                pos_hint: {"center_y": 0.5}
-                mipmap: True
-            
-            Label:
-                text: "Export"
-                color: 3/255, 30/255, 0/255, 1
-                font_size: 15
                 bold: True
                 size_hint_x: None
                 width: self.texture_size[0]
@@ -186,114 +149,101 @@
         orientation: "horizontal"
         size_hint: None, None
         size: 180, 40
-        pos_hint: {"right": 0.89, "top": 0.785}
+        pos_hint: {"right": 0.917, "top": 0.785}
         spacing: 12
         opacity: 0
         disabled: True
 
-        # Edit Button
-        BoxLayout:
-            orientation: "horizontal"
+        # Edit Button — green with 3-layer shadow
+        Button:
             size_hint: None, None
             size: 80, 40
-            spacing: 5
-            padding: [8, 0, 8, 0]
+            background_normal: ""
+            background_color: 0, 0, 0, 0
+            color: 1, 1, 1, 1
+            font_size: 16
+            bold: True
+            text: "Edit"
+            on_press: root.on_edit_button()
 
             canvas.before:
+                # Shadow
                 Color:
-                    rgba: 240/255, 248/255, 255/255, 1
+                    rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.22)
                 RoundedRectangle:
-                    pos: self.pos
+                    pos: self.x + 1, self.y - 3
                     size: self.size
                     radius: [8]
+                # Bottom edge
                 Color:
-                    rgba: 100/255, 149/255, 237/255, 0.3
-                Line:
-                    rounded_rectangle: (self.x, self.y, self.width, self.height, 8)
-                    width: 1.5
+                    rgba: (0, 0, 0, 0) if self.state == 'down' else (0/255, 100/255, 0/255, 1)
+                RoundedRectangle:
+                    pos: self.x, self.y - 2
+                    size: self.size
+                    radius: [8]
+                # Main face
+                Color:
+                    rgba: (0/255, 110/255, 0/255, 1) if self.state == 'down' else (0/255, 152/255, 0/255, 1)
+                RoundedRectangle:
+                    pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                    size: self.size
+                    radius: [8]
 
-            Button:
-                size_hint: 1, 1
-                background_normal: ''
-                background_color: 0, 0, 0, 0
-                on_release: root.on_edit_button()
-
-                FloatLayout:
-                    size: self.parent.size
-                    pos: self.parent.pos
-
-                    Image:
-                        source: "app/assets/edit.png"
-                        size_hint: None, None
-                        size: 20, 20
-                        pos_hint: {"x": 0.05, "center_y": 0.5}
-                        allow_stretch: True
-                        keep_ratio: True
-                        mipmap: True
-
-                    Label:
-                        text: "Edit"
-                        color: 30/255, 100/255, 180/255, 1
-                        font_size: 14
-                        bold: True
-                        pos_hint: {"right": 0.95, "center_y": 0.5}
-                        size_hint: None, None
-                        size: self.texture_size
-
-        # Delete Button
-        BoxLayout:
-            orientation: "horizontal"
+        # Delete Button — red with 3-layer shadow
+        Button:
             size_hint: None, None
             size: 88, 40
-            spacing: 5
-            padding: [6, 0, 6, 0]
+            background_normal: ""
+            background_color: 0, 0, 0, 0
+            color: 1, 1, 1, 1
+            font_size: 16
+            bold: True
+            text: "Delete"
+            on_press: root.on_delete_button()
 
             canvas.before:
+                # Shadow
                 Color:
-                    rgba: 255/255, 240/255, 240/255, 1
+                    rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.22)
                 RoundedRectangle:
-                    pos: self.pos
+                    pos: self.x + 1, self.y - 3
                     size: self.size
                     radius: [8]
+                # Bottom edge
                 Color:
-                    rgba: 220/255, 53/255, 69/255, 0.4
-                Line:
-                    rounded_rectangle: (self.x, self.y, self.width, self.height, 8)
-                    width: 1.5
-
-            Button:
-                size_hint: 1, 1
-                background_normal: ''
-                background_color: 0, 0, 0, 0
-                on_release: root.on_delete_button()
-
-                FloatLayout:
-                    size: self.parent.size
-                    pos: self.parent.pos
-
-                    Image:
-                        source: "app/assets/delete.png"
-                        size_hint: None, None
-                        size: 20, 20
-                        pos_hint: {"x": 0.05, "center_y": 0.5}
-                        allow_stretch: True
-                        keep_ratio: True
-                        mipmap: True
-
-                    Label:
-                        text: "Delete"
-                        color: 220/255, 53/255, 69/255, 1
-                        font_size: 14
-                        bold: True
-                        pos_hint: {"right": 0.95, "center_y": 0.5}
-                        size_hint: None, None
-                        size: self.texture_size
+                    rgba: (0, 0, 0, 0) if self.state == 'down' else (160/255, 30/255, 45/255, 1)
+                RoundedRectangle:
+                    pos: self.x, self.y - 2
+                    size: self.size
+                    radius: [8]
+                # Main face
+                Color:
+                    rgba: (160/255, 30/255, 45/255, 1) if self.state == 'down' else (220/255, 53/255, 69/255, 1)
+                RoundedRectangle:
+                    pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                    size: self.size
+                    radius: [8]
 
     # Main Content Area
     FloatLayout:
         size_hint: None, None
         size: 400, 460
-        pos_hint: {"center_x": 0.5, "y": 0.12}
+        pos_hint: {"center_x": 0.5, "y": 0.15}
+
+        # Empty state label — shown when no trees or no search match
+        Label:
+            id: empty_label
+            text: root.empty_message
+            color: 160/255, 160/255, 160/255, 1
+            font_size: 19
+            bold: True
+            halign: "center"
+            valign: "top"
+            size_hint: None, None
+            size: 400, 80
+            pos_hint: {"center_x": 0.5, "top": 0.92}
+            text_size: self.width, None
+            opacity: 1 if root.show_empty else 0
 
         # Scrollable Tree List
         ScrollView:
@@ -301,6 +251,7 @@
             size_hint: None, None
             size: 400, 395
             pos_hint: {"center_x": 0.5, "top": 1}
+            opacity: 0 if root.show_empty else 1
             bar_width: 6
             bar_color: 200/255, 200/255, 200/255, 1
             bar_inactive_color: 230/255, 230/255, 230/255, 0.5
@@ -315,51 +266,143 @@
                 spacing: 12
                 size_hint_y: None
                 height: self.minimum_height
-                padding: [28, 12, 28, 20]
+                padding: [4, 12, 4, 20]
 
-        # Add New Tree Bar
-        BoxLayout:
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        size: 400, 49
+        pos_hint: {"center_x": 0.5, "y": 0.040}
+        spacing: 14
+
+        # Add Tree Button — green 3-layer shadow + icon left of text
+        Button:
+            id: add_tree_button
+            text: ""
             size_hint: None, None
-            size: 343, 49
-            pos_hint: {"center_x": 0.5, "y": 0}
-            spacing: 10
-            padding: [15, 0, 10, 0]
+            size: 193, 49
+            font_size: 16
+            bold: True
+            background_normal: ""
+            background_color: 0, 0, 0, 0
+            color: 1, 1, 1, 1
+            on_press: root.on_add_tree()
 
             canvas.before:
                 Color:
-                    rgba: 242/255, 242/255, 242/255, 1
+                    rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.22)
                 RoundedRectangle:
-                    pos: self.pos
+                    pos: self.x + 1, self.y - 3
                     size: self.size
-                    radius: [11, 11, 11, 11]
+                    radius: [11]
                 Color:
-                    rgba: 0, 0, 0, 0.1
-                Line:
-                    rounded_rectangle: (self.x, self.y, self.width, self.height, 11)
-                    width: 1
+                    rgba: (0, 0, 0, 0) if self.state == 'down' else (0/255, 100/255, 0/255, 1)
+                RoundedRectangle:
+                    pos: self.x, self.y - 2
+                    size: self.size
+                    radius: [11]
+                Color:
+                    rgba: (0/255, 110/255, 0/255, 1) if self.state == 'down' else (0/255, 152/255, 0/255, 1)
+                RoundedRectangle:
+                    pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                    size: self.size
+                    radius: [11]
 
-            TextInput:
-                id: add_input
-                hint_text: "Add new tree"
-                font_size: 16
-                bold: True
-                halign: "left"
-                valign: "middle"
-                foreground_color: 79/255, 79/255, 79/255, 1
-                hint_text_color: 166/255, 166/255, 166/255, 1
-                background_color: 0, 0, 0, 0
-                padding: [8, (self.height - self.line_height)/2, 0, 0]
-                multiline: False
-                cursor_color: 79/255, 79/255, 79/255, 1
-                on_text_validate: root.on_add_tree()
+            BoxLayout:
+                orientation: "horizontal"
+                size: add_tree_button.size
+                pos: add_tree_button.pos
+                spacing: 8
+                padding: [0, 0, 0, 0]
 
-            Button:
-                text: "+"
-                size_hint: None, 1
-                width: 45
-                font_size: 28
-                background_normal: ""
-                background_color: 0, 0, 0, 0
-                color: 79/255, 79/255, 79/255, 1
-                bold: True
-                on_release: root.on_add_tree()
+                Widget:
+                    size_hint_x: 1
+
+                Image:
+                    source: "app/assets/add_tree_white.png"
+                    size_hint: None, None
+                    size: 22, 22
+                    allow_stretch: True
+                    keep_ratio: True
+                    mipmap: True
+                    pos_hint: {"center_y": 0.5}
+
+                Label:
+                    text: "Add Tree"
+                    color: 1, 1, 1, 1
+                    font_size: 16
+                    bold: True
+                    size_hint: None, None
+                    size: 90, add_tree_button.height
+                    halign: "left"
+                    valign: "middle"
+                    text_size: None, None
+
+                Widget:
+                    size_hint_x: 1
+
+        # Export Button — red 3-layer shadow + icon left of text
+        Button:
+            id: export_button
+            text: ""
+            size_hint: None, None
+            size: 193, 49
+            font_size: 16
+            bold: True
+            background_normal: ""
+            background_color: 0, 0, 0, 0
+            color: 1, 1, 1, 1
+            on_press: root.export_all_scans()
+
+            canvas.before:
+                Color:
+                    rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.22)
+                RoundedRectangle:
+                    pos: self.x + 1, self.y - 3
+                    size: self.size
+                    radius: [11]
+                Color:
+                    rgba: (0, 0, 0, 0) if self.state == 'down' else (160/255, 30/255, 45/255, 1)
+                RoundedRectangle:
+                    pos: self.x, self.y - 2
+                    size: self.size
+                    radius: [11]
+                Color:
+                    rgba: (160/255, 30/255, 45/255, 1) if self.state == 'down' else (220/255, 53/255, 69/255, 1)
+                RoundedRectangle:
+                    pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                    size: self.size
+                    radius: [11]
+
+            BoxLayout:
+                orientation: "horizontal"
+                size: export_button.size
+                pos: export_button.pos
+                spacing: 8
+                padding: [0, 0, 0, 0]
+
+                Widget:
+                    size_hint_x: 1
+
+                Image:
+                    source: "app/assets/export_white.png"
+                    size_hint: None, None
+                    size: 22, 22
+                    allow_stretch: True
+                    keep_ratio: True
+                    mipmap: True
+                    pos_hint: {"center_y": 0.5}
+
+                Label:
+                    text: "Export"
+                    color: 1, 1, 1, 1
+                    font_size: 16
+                    bold: True
+                    size_hint: None, None
+                    size: 70, export_button.height
+                    halign: "left"
+                    valign: "middle"
+                    text_size: None, None
+
+                Widget:
+                    size_hint_x: 1

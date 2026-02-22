@@ -14,9 +14,8 @@
         size_hint: None, None
         size: 70, 70
         pos_hint: {"center_x": 0.20, "y": 0.07}
-        on_release: app.last_screen = 'capture_result'; app.root.current = 'result'
+        on_press: app.last_screen = 'capture_result'; app.root.current = 'result'
 
-        # Shadow, base color, and touch feedback
         canvas.before:
             Color:
                 rgba: self.shadow_color
@@ -31,13 +30,12 @@
                 size: self.size
                 radius: [18, 18, 18, 18]
             Color:
-                rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0  # Touch feedback
+                rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
                 radius: [18, 18, 18, 18]
 
-        # Layout containing icon and label
         RelativeLayout:
             size: result_button.size
             pos: result_button.pos
@@ -69,9 +67,8 @@
         size_hint: None, None
         size: 110, 110
         pos_hint: {"center_x": 0.5, "y": 0.04}
-        on_release: app.root.current = 'scan'
+        on_press: app.root.current = 'scan'
 
-        # Shadow, gradient, and touch feedback
         canvas.before:
             Color:
                 rgba: self.shadow_color
@@ -87,13 +84,12 @@
                 size: self.size
                 radius: [25, 25, 25, 25]
             Color:
-                rgba: 0.2, 0.2, 0.2, 0.3 if self.state == 'down' else 0  # Touch feedback
+                rgba: 0.2, 0.2, 0.2, 0.3 if self.state == 'down' else 0
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
                 radius: [25, 25, 25, 25]
 
-        # Layout containing scan icon and label
         RelativeLayout:
             size: retake_button.size
             pos: retake_button.pos
@@ -119,15 +115,14 @@
                     valign: "middle"
                     text_size: self.size
 
-    # Save Button
+    # Save Button — now opens SaveModal instead of navigating to 'save' screen
     RoundedButton:
         id: save_button
         size_hint: None, None
         size: 70, 70
         pos_hint: {"center_x": 0.80, "y": 0.07}
-        on_release: app.root.current = 'save'
+        on_press: root.open_save_modal()
 
-        # Shadow, base color, and touch feedback
         canvas.before:
             Color:
                 rgba: self.shadow_color
@@ -142,13 +137,12 @@
                 size: self.size
                 radius: [18, 18, 18, 18]
             Color:
-                rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0  # Touch feedback
+                rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0
             RoundedRectangle:
                 pos: self.pos
                 size: self.size
                 radius: [18, 18, 18, 18]
 
-        # Layout containing icon and label
         RelativeLayout:
             size: save_button.size
             pos: save_button.pos

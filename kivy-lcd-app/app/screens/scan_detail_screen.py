@@ -1,28 +1,34 @@
 """Scan Detail Screen - Display full details of a single scan record."""
 from kivy.uix.screenmanager import Screen
+from kivy.uix.modalview import ModalView
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.label import Label
+from kivy.uix.image import Image
+from kivy.uix.floatlayout import FloatLayout
 from kivy.app import App
 from kivy.properties import StringProperty, NumericProperty, BooleanProperty
-from kivy.uix.popup import Popup
-from kivy.uix.label import Label
-from kivy.uix.boxlayout import BoxLayout
-from kivy.uix.button import Button
+from kivy.animation import Animation
+from kivy.clock import Clock
+from kivy.graphics import Color, RoundedRectangle, Line
 import os
 
 
+class ConfirmDeleteModal(ModalView):
+    detail_text = StringProperty("")
+    on_confirm_callback = None
+
+    def cancel(self):
+        self.dismiss()
+
+    def confirm(self):
+        self.dismiss()
+        if self.on_confirm_callback:
+            self.on_confirm_callback()
+
+
 class ScanDetailScreen(Screen):
-    """Display detailed information about a single scan record.
-    
-    Shows:
-    - Full-size captured image
-    - Disease name, confidence score, severity percentage
-    - Leaf metrics (total area, lesion area, lesion coverage)
-    - Associated tree name
-    - Scan timestamp
-    - User notes
-    - Delete record button
-    """
-    
-    # Display properties
+    """Display detailed information about a single scan record."""
+
     scan_id = NumericProperty(0)
     image_path = StringProperty("")
     disease_name = StringProperty("Unknown")
@@ -32,46 +38,36 @@ class ScanDetailScreen(Screen):
     tree_name = StringProperty("Unknown")
     scan_timestamp = StringProperty("N/A")
     formatted_timestamp = StringProperty("N/A")
-    notes = StringProperty("")
-    
-    # Leaf metrics (calculated from severity data)
+
     total_leaf_area = NumericProperty(0.0)
     lesion_area = NumericProperty(0.0)
     lesion_coverage = NumericProperty(0.0)
-    
-    # Confidence badge properties
+
+    # Classification tag (Healthy / Early / Advance)
     confidence_badge_text = StringProperty("")
-    confidence_badge_color = StringProperty("")
-    
-    # UI state
+
     delete_enabled = BooleanProperty(True)
-    
+
     def on_pre_enter(self, *args):
-        """Load scan details when screen is entered."""
         self._load_scan_details()
-    
+
     def _load_scan_details(self):
-        """Load full scan record details from database."""
         from app.core.db import get_scan_detail
-        
-        # Get scan_id from app state (set by previous screen)
+
         app = App.get_running_app()
         scan_id = getattr(app, 'current_scan_id', 0)
-        
+
         if not scan_id:
             self.disease_name = "Error: No scan selected"
             return
-        
+
         self.scan_id = scan_id
-        
-        # Fetch full details
         scan_data = get_scan_detail(scan_id)
-        
+
         if not scan_data:
             self.disease_name = "Error: Scan not found"
             return
-        
-        # Populate display properties
+
         self.image_path = scan_data.get("image_path", "")
         self.disease_name = scan_data.get("disease_name", "Unknown")
         self.confidence_score = scan_data.get("confidence_score", 0.0)
@@ -79,162 +75,189 @@ class ScanDetailScreen(Screen):
         self.severity_name = scan_data.get("severity_name", "Unknown")
         self.tree_name = scan_data.get("tree_name", "Unknown")
         self.scan_timestamp = scan_data.get("scan_timestamp", "N/A")
-        self.notes = scan_data.get("notes", "") or ""
-        
-        # Format timestamp
+
         self._format_timestamp()
-        
-        # Update confidence badge
-        self._update_confidence_badge(self.confidence_score)
-        
-        # Calculate leaf metrics from severity percentage
-        # Assuming standard image size or using actual pixel data if available
+        self._update_classification_tag(self.confidence_score)
         self._calculate_leaf_metrics()
-    
+
     def _format_timestamp(self):
-        """Format scan timestamp for display."""
         try:
             from datetime import datetime
             dt = datetime.strptime(self.scan_timestamp, "%Y-%m-%d %H:%M:%S")
-            self.formatted_timestamp = dt.strftime("%B %d, %Y at %I:%M %p")
-        except:
+            self.formatted_timestamp = dt.strftime("%B %d, %Y %I:%M %p")
+        except Exception:
             self.formatted_timestamp = self.scan_timestamp
-    
+
     def _calculate_leaf_metrics(self):
-        """Calculate leaf area metrics from severity percentage.
-        
-        Note: This is a simplified calculation. In a full implementation,
-        these values would be stored in the database during analysis.
-        """
-        # Placeholder calculation (assume standard leaf size)
-        # In production, these should be stored during image analysis
-        standard_leaf_area = 100000.0  # pixels² (example)
-        
+        standard_leaf_area = 100000.0
         self.total_leaf_area = standard_leaf_area
         self.lesion_coverage = self.severity_percentage
         self.lesion_area = (self.severity_percentage / 100.0) * standard_leaf_area
-    
-    def _update_confidence_badge(self, confidence):
-        '''Update confidence badge text and color based on confidence value.'''
+
+    def _update_classification_tag(self, confidence):
+        """
+        Sets classification tag text. Colors handled in KV.
+          < 0.60  → Advance  (red bg)
+          0.60–0.85 → Early  (yellow bg)
+          ≥ 0.85  → Healthy  (green bg)
+        """
         if confidence < 0.60:
-            self.confidence_badge_text = "⚠ Low Confidence"
-            self.confidence_badge_color = "#DD2D1D"  # Red
+            self.confidence_badge_text = "Advance"
         elif confidence < 0.85:
-            self.confidence_badge_text = "Moderate Confidence"
-            self.confidence_badge_color = "#CFBF2C"  # Yellow
+            self.confidence_badge_text = "Early"
         else:
-            self.confidence_badge_text = "High Confidence"
-            self.confidence_badge_color = "#26A421"  # Green
-    
+            self.confidence_badge_text = "Healthy"
+
     def confirm_delete(self):
-        """Show confirmation dialog before deleting scan record."""
-        content = BoxLayout(orientation='vertical', padding=10, spacing=10)
-        
-        message = Label(
-            text=f"Are you sure you want to delete this scan?\n\n"
-                 f"Tree: {self.tree_name}\n"
-                 f"Disease: {self.disease_name}\n"
-                 f"Date: {self.formatted_timestamp}\n\n"
-                 f"This action cannot be undone.",
-            halign='center',
-            valign='middle'
+        """Show styled delete confirmation modal."""
+        modal = ConfirmDeleteModal()
+        modal.detail_text = (
+            f"Disease: {self.disease_name}\n"
+            "This action cannot be undone."
         )
-        content.add_widget(message)
-        
-        buttons = BoxLayout(size_hint_y=0.3, spacing=10)
-        
-        popup = Popup(
-            title="Confirm Delete",
-            content=content,
-            size_hint=(0.8, 0.5),
-            auto_dismiss=False
-        )
-        
-        def on_cancel(instance):
-            popup.dismiss()
-        
-        def on_confirm(instance):
-            popup.dismiss()
-            self.delete_scan()
-        
-        btn_cancel = Button(text="Cancel", on_press=on_cancel)
-        btn_delete = Button(
-            text="Delete",
-            background_color=(0.8, 0.2, 0.2, 1.0),
-            on_press=on_confirm
-        )
-        
-        buttons.add_widget(btn_cancel)
-        buttons.add_widget(btn_delete)
-        content.add_widget(buttons)
-        
-        popup.open()
-    
+        modal.on_confirm_callback = self.delete_scan
+        modal.open()
+
     def delete_scan(self):
-        """Delete the current scan record from database."""
         from app.core.db import delete_scan_record
-        
+
         if not self.scan_id:
-            self._show_error("No scan ID to delete")
+            self.show_notification("No scan ID to delete.", icon_type='fail')
             return
-        
+
         try:
             success = delete_scan_record(self.scan_id)
-            
             if success:
-                self._show_success("Scan deleted successfully")
-                # Navigate back after short delay
-                from kivy.clock import Clock
-                Clock.schedule_once(lambda dt: self.go_back(), 1.5)
+                self.go_back()
             else:
-                self._show_error("Failed to delete scan")
+                self.show_notification("Failed to delete scan.", icon_type='fail')
         except Exception as e:
-            self._show_error(f"Delete error: {str(e)}")
-    
-    def _show_success(self, message: str):
-        """Show success message popup."""
-        popup = Popup(
-            title="Success",
-            content=Label(text=message),
-            size_hint=(0.6, 0.3)
-        )
-        popup.open()
-    
-    def _show_error(self, message: str):
-        """Show error message popup."""
-        popup = Popup(
-            title="Error",
-            content=Label(text=message),
-            size_hint=(0.6, 0.3)
-        )
-        popup.open()
-    
+            self.show_notification(f"Delete error: {str(e)}", icon_type='fail')
+
     def export_data(self):
-        """Export this scan's data to JSON file."""
         from app.core.db import export_scan_to_json
-        
+
         if not self.scan_id:
-            self._show_error("No scan to export")
+            self.show_notification("No scan to export.", icon_type='fail')
             return
-        
+
         try:
             output_path = export_scan_to_json(self.scan_id)
-            
             if output_path:
-                self._show_success(f"Scan exported to:\n{output_path}")
+                self.show_notification(
+                    f"Exported: {os.path.basename(output_path)}",
+                    icon_type='success'
+                )
             else:
-                self._show_error("Export failed")
+                self.show_notification("Export failed.", icon_type='fail')
         except Exception as e:
-            self._show_error(f"Export error: {str(e)}")
-    
+            self.show_notification(f"Export error: {str(e)}", icon_type='fail')
+
+    def show_notification(self, message, icon_type=None):
+        """Show animated notification popup with optional icon.
+        Matches the same style as RecordsScreen.show_notification.
+
+        Args:
+            message: The notification text
+            icon_type: 'success' for checkmark, 'fail' for warning, None for no icon
+        """
+        # Measure label first to size container dynamically
+        popup_label = Label(
+            text=message,
+            color=(49/255, 49/255, 49/255, 1),
+            font_size=14,
+            halign="left",
+            valign="middle",
+            bold=True,
+            pos_hint={"center_y": 0.52}
+        )
+        popup_label.texture_update()
+        popup_label.size = popup_label.texture_size
+
+        # Calculate content width: icon (if any) + spacing + label
+        icon_width = 24 + 8 if icon_type else 0
+        content_width = icon_width + popup_label.width
+
+        # Equal horizontal padding on both sides
+        h_padding = 20
+        popup_width = content_width + h_padding * 2
+        popup_height = 45
+
+        popup = FloatLayout(
+            size_hint=(None, None),
+            size=(popup_width, popup_height),
+            pos_hint={"center_x": 0.5, "top": 0.88},
+            opacity=0
+        )
+
+        with popup.canvas.before:
+            Color(1, 1, 1, 1)
+            popup.bg_rect = RoundedRectangle(radius=[10], pos=popup.pos, size=popup.size)
+            Color(0, 0, 0, 0.15)
+            popup.border_line = Line(
+                rounded_rectangle=(popup.x, popup.y, popup.width, popup.height, 10),
+                width=1
+            )
+
+        popup.bind(
+            pos=lambda _, v: (
+                setattr(popup.bg_rect, 'pos', v),
+                setattr(popup.border_line, 'rounded_rectangle',
+                        (v[0], v[1], popup.width, popup.height, 10))
+            ),
+            size=lambda _, v: (
+                setattr(popup.bg_rect, 'size', v),
+                setattr(popup.border_line, 'rounded_rectangle',
+                        (popup.x, popup.y, v[0], v[1], 10))
+            )
+        )
+
+        content = BoxLayout(
+            orientation='horizontal',
+            size_hint=(None, None),
+            size=(content_width, 24),
+            spacing=8,
+            pos_hint={"center_x": 0.5, "center_y": 0.5}
+        )
+
+        if icon_type == 'success':
+            icon = Image(
+                source='app/assets/success.png',
+                size_hint=(None, None),
+                size=(24, 24),
+                allow_stretch=True,
+                keep_ratio=True,
+                mipmap=True
+            )
+            content.add_widget(icon)
+        elif icon_type == 'fail':
+            icon = Image(
+                source='app/assets/fail.png',
+                size_hint=(None, None),
+                size=(24, 24),
+                allow_stretch=True,
+                keep_ratio=True,
+                mipmap=True
+            )
+            content.add_widget(icon)
+
+        content.add_widget(popup_label)
+        popup.add_widget(content)
+        self.add_widget(popup)
+
+        anim = Animation(opacity=1, duration=0.3)
+        anim += Animation(opacity=1, duration=1.5)
+        anim += Animation(opacity=0, duration=0.4)
+        anim.bind(on_complete=lambda *_: self.remove_widget(popup))
+        anim.start(popup)
+
     def go_back(self):
-        """Navigate back to previous screen."""
+        """Navigate back to Result screen (where More Info was clicked)."""
         app = App.get_running_app()
-        
-        # Determine which screen to return to
-        previous = getattr(app, 'last_screen', 'records')
-        
-        if previous == 'scan_list':
+        last = getattr(app, 'last_screen', 'result')
+        if last == 'result':
+            self.manager.current = 'result'
+        elif last == 'scan_list':
             self.manager.current = 'scan_list'
         else:
             self.manager.current = 'records'

@@ -1,29 +1,43 @@
+"""Scan Screen — main entry point for the scanning workflow."""
 from kivy.uix.screenmanager import Screen
 from kivy.app import App
 
 class ScanScreen(Screen):
     """
     Represents the scanning screen of the app.
-    
-    This screen provides the main entry point to the scanning workflow:
-    - Central 'Scan' button initiates the hardware capture pipeline
-    - Navigates to ScanningScreen which handles:
-      1. Motor homing
-      2. Frame capture (4 frames)
-      3. Image stitching
-      4. Disease analysis
+
+    - Cancel: navigate back to Home
+    - Scan: navigate to ScanningScreen
+    - Guide: open GuideModal overlay
     """
-    
+
     def on_pre_enter(self):
-        """Called before screen is displayed."""
-        # Reset any previous scan results
+        """Reset any previous scan results before screen is shown."""
         app = App.get_running_app()
         if hasattr(app, 'scan_result'):
             app.scan_result = {}
-    
-    def start_scanning(self):
-        """Initiate hardware scanning workflow."""
-        app = App.get_running_app()
-        app.last_screen = 'scan'
-        app.root.current = 'scanning'
+        # Reset modal guards so they can be re-opened each time
+        self._guide_open = False
+        self._scanning_open = False
 
+    def open_scanning_modal(self):
+        """Open ScanningModal as an overlay — guarded against double-tap."""
+        if getattr(self, '_scanning_open', False):
+            return
+        self._scanning_open = True
+
+        from app.modals.scanning_modal import ScanningModal
+        modal = ScanningModal()
+        modal.bind(on_dismiss=lambda *_: setattr(self, '_scanning_open', False))
+        modal.open()
+
+    def open_guide_modal(self):
+        """Open GuideModal as an overlay — guarded against double-tap."""
+        if getattr(self, '_guide_open', False):
+            return
+        self._guide_open = True
+
+        from app.modals.guide_modal import GuideModal
+        modal = GuideModal()
+        modal.bind(on_dismiss=lambda *_: setattr(self, '_guide_open', False))
+        modal.open()

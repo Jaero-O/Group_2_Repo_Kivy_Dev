@@ -1,0 +1,133 @@
+#:kivy 2.0
+#Updated
+<DeleteModal>:
+    size_hint: None, None
+    size: 480, 800
+    auto_dismiss: False
+    background: ""
+    background_color: 0, 0, 0, 0
+    overlay_color: 0, 0, 0, 0.5
+    
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: 0, 0, 0, 0.5
+            Rectangle:
+                pos: root.pos
+                size: root.size
+        
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint: None, None
+            size: 300, 170
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            padding: [18, 18, 18, 18]
+            spacing: 12
+            
+            canvas.before:
+                Color:
+                    rgba: 0, 0, 0, 0.25
+                RoundedRectangle:
+                    radius: [16]
+                    pos: self.x + 2, self.y - 4
+                    size: self.size
+                Color:
+                    rgba: 1, 1, 1, 1
+                RoundedRectangle:
+                    radius: [16]
+                    pos: self.pos
+                    size: self.size
+            
+            Label:
+                text: f"Delete '{root.tree_name}'?"
+                color: 3/255, 33/255, 0/255, 1
+                font_size: 20
+                bold: True
+                size_hint_y: None
+                height: 26
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+            
+            Label:
+                text: "This action cannot be undone."
+                color: 49/255, 49/255, 49/255, 1
+                font_size: 15
+                bold: True
+                size_hint_y: None
+                height: 40
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 34
+                spacing: 8
+                
+                # Cancel Button
+                Button:
+                    text: "Cancel"
+                    size_hint_x: 0.5
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    color: (0/255, 36/255, 0/255, 1) if self.state == 'down' else (0/255, 56/255, 0/255, 1)
+                    font_size: 14
+                    bold: True
+                    on_press: root.cancel()
+                    canvas.before:
+                        # Shadow
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.15)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x + 1, self.y - 3
+                            size: self.size
+                        # Bottom edge
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (180/255, 180/255, 180/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y - 2
+                            size: self.size
+                        # Main face
+                        Color:
+                            rgba: (220/255, 220/255, 220/255, 1) if self.state == 'down' else (241/255, 241/255, 241/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                            size: self.size
+                
+                # Delete Button
+                Button:
+                    text: "Delete"
+                    size_hint_x: 0.5
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    color: 1, 1, 1, 1
+                    font_size: 14
+                    bold: True
+                    on_press: root.confirm_delete()
+                    canvas.before:
+                        # Shadow
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.2)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x + 1, self.y - 3
+                            size: self.size
+                        # Bottom edge
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (160/255, 20/255, 5/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y - 2
+                            size: self.size
+                        # Main face
+                        Color:
+                            rgba: (160/255, 20/255, 5/255, 1) if self.state == 'down' else (220/255, 41/255, 14/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                            size: self.size
