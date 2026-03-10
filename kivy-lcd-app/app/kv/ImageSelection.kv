@@ -1,7 +1,42 @@
 #:kivy 2.0.0
 
-<ImageSelection>
-    # Background Color
+<FilterButton>:
+    background_normal: ""
+    background_down: ""
+    background_color: 0, 0, 0, 0
+    color: 1, 1, 1, 1
+    font_size: 13
+    bold: True
+    size_hint: None, None
+    halign: "center"
+    valign: "center"
+    text_size: self.size
+
+    canvas.before:
+        # Outer shadow (visible only in normal state — gives lifted look)
+        Color:
+            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.22)
+        RoundedRectangle:
+            pos: self.x + 1, self.y - 3
+            size: self.size
+            radius: [8]
+        # Bottom edge / depth strip
+        Color:
+            rgba: (0, 0, 0, 0) if self.state == 'down' else (0/255, 100/255, 0/255, 1)
+        RoundedRectangle:
+            pos: self.x, self.y - 2
+            size: self.size
+            radius: [8]
+        # Main button face — darker green when pressed
+        Color:
+            rgba: (0/255, 110/255, 0/255, 1) if self.state == 'down' else (0/255, 152/255, 0/255, 1)
+        RoundedRectangle:
+            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+            size: self.size
+            radius: [8]
+
+
+<ImageSelection>:
     canvas.before:
         Color:
             rgba: 248/255, 248/255, 248/255, 1
@@ -9,14 +44,13 @@
             pos: self.pos
             size: self.size
 
-    # Header Section
+    # Records Header Icon
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
         height: 50
         width: self.parent.width
         pos_hint: {"x": 0.06, "y": 0.92}
-        spacing: 5.3
 
         Image:
             source: "app/assets/records.png"
@@ -24,16 +58,15 @@
             size: 35, 35
             allow_stretch: True
             keep_ratio: True
-            color: 6/255, 87/255, 6/255, 1
             mipmap: True
 
+    # Records Header Label
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
         height: 50
         width: self.parent.width
         pos_hint: {"x": 0.17, "y": 0.91}
-        spacing: 5.3
 
         Label:
             text: "Records"
@@ -50,16 +83,15 @@
         size_hint: None, None
         size: 100, 36
         pos_hint: {"x": 0.79, "y": 0.915}
-        on_release: app.root.current = 'records'
+        on_press: app.root.current = 'records'
 
         BoxLayout:
             orientation: "horizontal"
-            size: self.size
+            size: back_button.size
+            pos: back_button.pos
             spacing: 6
             padding: [0, 0, 0, 0]
             pos_hint: {"center_y": 0.5}
-            size: back_button.size
-            pos: back_button.pos
 
             Image:
                 source: "app/assets/back.png"
@@ -81,232 +113,140 @@
                 valign: "middle"
                 pos_hint: {"center_y": 0.5}
 
+    # Filter Buttons Row
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        size: 420, 44
+        pos_hint: {"center_x": 0.5, "top": 0.90}
+        spacing: 8
+        padding: [10, 0, 10, 0]
 
-    # Image Gallery Section
+        # Disease filter button
+        RelativeLayout:
+            size_hint: None, None
+            size: 110, 40
+
+            FilterButton:
+                id: disease_btn
+                text: "Disease"
+                size: 110, 40
+                padding: [5, 0, 20, 0]
+                on_press: root.show_disease_modal()
+
+            Image:
+                source: "app/assets/dropdown_white.png"
+                size_hint: None, None
+                size: 14, 14
+                pos: 85, 13
+                mipmap: True
+
+        # Date filter button
+        RelativeLayout:
+            size_hint: None, None
+            size: 110, 40
+
+            FilterButton:
+                id: date_btn
+                text: "Date"
+                size: 110, 40
+                padding: [5, 0, 20, 0]
+                on_press: root.show_date_modal()
+
+            Image:
+                source: "app/assets/dropdown_white.png"
+                size_hint: None, None
+                size: 14, 14
+                pos: 85, 13
+                mipmap: True
+
+        # Sort button
+        RelativeLayout:
+            size_hint: None, None
+            size: 110, 40
+
+            FilterButton:
+                id: sort_btn
+                text: "Sort"
+                size: 110, 40
+                padding: [5, 0, 20, 0]
+                on_press: root.show_sort_modal()
+
+            Image:
+                source: "app/assets/sort_white.png"
+                size_hint: None, None
+                size: 14, 14
+                pos: 85, 13
+                mipmap: True
+
+        # Custom date range calendar button
+        Button:
+            id: calendar_btn
+            size_hint: None, None
+            size: 44, 40
+            background_normal: ""
+            background_color: 0, 0, 0, 0
+            on_press: root.open_custom_date_picker()
+
+            canvas.before:
+                Color:
+                    rgba: (0, 0, 0, 0.22) if self.state == 'normal' else (0, 0, 0, 0)
+                RoundedRectangle:
+                    pos: self.x + 1, self.y - 3
+                    size: self.size
+                    radius: [8]
+                Color:
+                    rgba: (0/255, 100/255, 0/255, 1) if self.state == 'normal' else (0, 0, 0, 0)
+                RoundedRectangle:
+                    pos: self.x, self.y - 2
+                    size: self.size
+                    radius: [8]
+                Color:
+                    rgba: (0/255, 110/255, 0/255, 1) if self.state == 'down' else (0/255, 152/255, 0/255, 1)
+                RoundedRectangle:
+                    pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                    size: self.size
+                    radius: [8]
+
+            Image:
+                source: "app/assets/filter_white.png"
+                size_hint: None, None
+                size: 22, 22
+                center: self.parent.center
+                mipmap: True
+
+    # Image Gallery
     ScrollView:
         id: scroll_view
-        size_hint: (1, None)
-        height: root.height * 0.74
+        size_hint: 1, None
+        height: root.height * 0.78
         pos_hint: {"x": 0, "y": 0.04}
-        bar_width: 8
-        do_scroll_x: False
+        on_scroll_y: root.on_scroll(args[1])
 
         BoxLayout:
             orientation: 'vertical'
             size_hint_y: None
             height: self.minimum_height
-            spacing: 8
+            spacing: 2
 
             Label:
-                id: empty_label
-                text: ''
-                color: 0,0,0,0.6
-                font_size: 16
-                bold: True
+                text: 'No scans found' if len(root.displayed_images) == 0 else ''
+                color: 3/255, 33/255, 0/255, 0.6
                 size_hint_y: None
-                height: 20
-                halign: 'center'
-                valign: 'middle'
-                text_size: self.width, None
+                height: 100 if len(root.displayed_images) == 0 else 0
 
             GridLayout:
                 id: image_grid
                 cols: 3
                 spacing: [2, 2]
-                padding: [0, 0, 0, 0]
                 size_hint_y: None
                 height: self.minimum_height
 
-            # Load More Button
             Button:
-                id: load_more_btn
                 text: "Load More"
                 size_hint_y: None
                 height: 44
-                font_size: 15
-                bold: True
-                background_normal: ''
-                background_color: 6/255, 87/255, 6/255, 1
-                color: 1, 1, 1, 1
                 opacity: 1 if root.has_more else 0
                 disabled: not root.has_more
-                on_release: root.load_more()
-
-    # Enhanced Filter Section - Second Row (Disease, Date, Sort, Calendar)
-    FloatLayout:
-        size_hint: None, None
-        size: 430, 40
-        pos_hint: {"center_x": 0.5, "y": 0.79}
-
-        # White background with rounded corners
-        canvas.before:
-            Color:
-                rgba: 1, 1, 1, 0.95
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [8, 8, 8, 8]
-
-        BoxLayout:
-            orientation: "horizontal"
-            size_hint: None, None
-            size: 426, 36
-            spacing: 4
-            padding: [4, 2, 4, 2]
-            pos_hint: {"center_x": 0.5, "center_y": 0.5}
-
-            Button:
-                id: disease_btn
-                text: "Disease: All Diseases ▼"
-                background_normal: ''
-                background_color: 248/255, 248/255, 248/255, 1
-                color: 3/255, 30/255, 0/255, 1
-                bold: True
-                font_size: 11
-                size_hint_x: 0.35
-                on_release: root.show_disease_dropdown()
-                text_size: self.size
-                halign: 'center'
-                valign: 'middle'
-                shorten: True
-                shorten_from: 'right'
-                
-                canvas.before:
-                    Color:
-                        rgba: 220/255, 220/255, 220/255, 1
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [6]
-
-            Button:
-                id: date_btn
-                text: "Date: All Time ▼"
-                background_normal: ''
-                background_color: 248/255, 248/255, 248/255, 1
-                color: 3/255, 30/255, 0/255, 1
-                bold: True
-                font_size: 11
-                size_hint_x: 0.30
-                on_release: root.show_date_dropdown()
-                text_size: self.size
-                halign: 'center'
-                valign: 'middle'
-                shorten: True
-                shorten_from: 'right'
-                
-                canvas.before:
-                    Color:
-                        rgba: 220/255, 220/255, 220/255, 1
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [6]
-
-            Button:
-                id: sort_btn
-                text: "Sort: Newest First ▼"
-                background_normal: ''
-                background_color: 248/255, 248/255, 248/255, 1
-                color: 3/255, 30/255, 0/255, 1
-                bold: True
-                font_size: 11
-                size_hint_x: 0.25
-                on_release: root.show_sort_dropdown()
-                text_size: self.size
-                halign: 'center'
-                valign: 'middle'
-                shorten: True
-                shorten_from: 'right'
-                
-                canvas.before:
-                    Color:
-                        rgba: 220/255, 220/255, 220/255, 1
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [6]
-
-            Button:
-                id: calendar_btn
-                text: "📅"
-                background_normal: ''
-                background_color: 6/255, 87/255, 6/255, 1
-                color: 1, 1, 1, 1
-                bold: True
-                font_size: 16
-                size_hint_x: 0.10
-                on_release: root.open_custom_date_picker()
-                
-                canvas.before:
-                    Color:
-                        rgba: 6/255, 87/255, 6/255, 1
-                    RoundedRectangle:
-                        pos: self.pos
-                        size: self.size
-                        radius: [6]
-
-    # Time Filter Bar Section (Years/Months/Days/All Photos)
-    FloatLayout:
-        size_hint: None, None
-        size: 418, 36
-        pos_hint: {"center_x": 0.5, "y": 0.15}
-
-        # Gray highlight background
-        canvas.before:
-            Color:
-                rgba: 1, 1, 1, 0.75
-            RoundedRectangle:
-                pos: self.pos
-                size: self.size
-                radius: [18, 18, 18, 18]
-
-            Color:
-                rgba: 0.7, 0.7, 0.7, 1
-            RoundedRectangle:
-                pos: (self.x + root.highlight_x, self.y + 4)
-                size: (90, 28)
-                radius: [15, 15, 15, 15]
-
-        BoxLayout:
-            orientation: "horizontal"
-            size_hint: None, None
-            size: 418, 36
-            spacing: 0
-            pos_hint: {"center_x": 0.5, "center_y": 0.5}
-
-            Button:
-                text: "Years"
-                background_normal: ''
-                background_color: (0, 0, 0, 0)
-                color: (1, 1, 1, 1) if root.active_filter == "Years" else (64/255, 64/255, 64/255, 1)
-                bold: True
-                font_size: 14
-                on_release: root.move_highlight("Years")
-
-            Button:
-                text: "Months"
-                background_normal: ''
-                background_color: (0, 0, 0, 0)
-                color: (1, 1, 1, 1) if root.active_filter == "Months" else (64/255, 64/255, 64/255, 1)
-                bold: True
-                font_size: 14
-                on_release: root.move_highlight("Months")
-
-            Button:
-                text: "Days"
-                background_normal: ''
-                background_color: (0, 0, 0, 0)
-                color: (1, 1, 1, 1) if root.active_filter == "Days" else (64/255, 64/255, 64/255, 1)
-                bold: True
-                font_size: 14
-                on_release: root.move_highlight("Days")
-
-            Button:
-                text: "All Photos"
-                background_normal: ''
-                background_color: (0, 0, 0, 0)
-                color: (1, 1, 1, 1) if root.active_filter == "All Photos" else (64/255, 64/255, 64/255, 1)
-                bold: True
-                font_size: 14
-                on_release: root.move_highlight("All Photos")
+                background_color: 0/255, 152/255, 0/255, 1
+                on_press: root.load_more()

@@ -5,21 +5,19 @@
     icon_source: ''  # Icon image for the button
     button_text: ''  # Label text for the button
     orientation: "vertical"
-    size_hint_x: 0.333
-    spacing: 2
-    padding: [10, 0, 10, 0]
-    
-    # Navigate to the assigned screen when tapped
-    on_release: app.root.current = self.screen_name
+    size_hint_x: 0.25
+    spacing: 0
+    padding: [5, 5, 5, 9]
+    on_release: if self.screen_name != "": app.root.current = self.screen_name
     
     # Button background effect when pressed
     canvas.before:
         Color:
             rgba: 0.5, 0.5, 0.5, 0.3 if self.state == 'down' else 0
         RoundedRectangle:
-            pos: self.x + 5, self.y + 5
-            size: self.width - 10, self.height - 10
-            radius: [15, 15, 15, 15]
+            pos: self.pos
+            size: self.size
+            radius: [15,]
     
     # Icon displayed on the button
     Image:
@@ -28,7 +26,7 @@
         size: 40, 40
         allow_stretch: True
         keep_ratio: True
-        pos_hint: {"center_x": 0.5, "top": 1}
+        pos_hint: {"center_x": 0.5}
         mipmap: True
     
     # Label displayed below the icon
@@ -131,14 +129,14 @@
                     valign: 'middle'
                     text_size: self.size
 
-    # Bottom Buttons (Records, Share, Help)
+    # Bottom Buttons (Records, Share, Help, Exit)
     BoxLayout:
         orientation: "horizontal"
         size_hint_y: None
         height: 110
         pos_hint: {"y": 0.02}
         spacing: 0
-        padding: [20, 0, 20, 10]
+        padding: [20, 10, 20, 10]
 
         # Records Button
         TouchableButton:
@@ -157,3 +155,10 @@
             screen_name: 'help'
             icon_source: "app/assets/help.png"
             button_text: "Help"
+
+        # Exit Button
+        TouchableButton:
+            screen_name: ""
+            icon_source: "app/assets/exit.png"
+            button_text: "Exit"
+            on_press: root.show_exit_confirmation()

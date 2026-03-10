@@ -1,0 +1,49 @@
+{
+  "timestamp": "2026-03-10T17:55:45.093793",
+  "timings": {
+    "total": 24.629520893096924
+  },
+  "classification": {
+    "class": "Die Back",
+    "class_index": 3,
+    "confidence": 0.9994650483131409,
+    "probabilities": {
+      "Anthracnose": 0.00034986319951713085,
+      "Bacterial Canker": 9.399052942171693e-06,
+      "Cutting Weevil": 0.00016444496577605605,
+      "Die Back": 0.9994650483131409,
+      "Gall Midge": 3.34837386617437e-06,
+      "Healthy": 2.388681252796232e-08,
+      "Powdery Mildew": 7.978644134709612e-06,
+      "Sooty Mould": 1.7661204054775226e-08
+    }
+  },
+  "analysis": {
+    "leaf_id": 1773136569,
+    "date_processed": "2026-03-10T17:56:09.717949",
+    "leaf_area_cm2": 0.000423801,
+    "lesion_area_cm2": 0.0,
+    "severity_pct": 0.0,
+    "lesion_count": 0,
+    "mean_lesion_size_px": 0,
+    "leaf_mean_r": 62.5,
+    "leaf_mean_g": 76.10000000000001,
+    "leaf_mean_b": 75.5,
+    "lesion_mean_r": 0.0,
+    "lesion_mean_g": 0.0,
+    "lesion_mean_b": 0.0,
+    "lesion_to_leaf_color_ratio_g": 0.0,
+    "exg_mean": 14.200000000000001,
+    "ndvi_proxy_mean": 0.09831064581606791,
+    "leaf_solidity": 10.0,
+    "leaf_circularity": 5.390120952601715,
+    "leaf_aspect_ratio": 0.6666666666666666,
+    "damage_pct_inpaint": 0.0,
+    "lesion_glcm_contrast": 0,
+    "lesion_glcm_dissimilarity": 0
+  },
+  "errors": [],
+  "status": "success",
+  "database_id": 100,
+  "reduced_image": "/home/kennethbinasa/kivy_v1/data/scans/scan_20260310_175545/output_image_reduced.png"
+}
