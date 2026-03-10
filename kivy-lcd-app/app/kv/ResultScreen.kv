@@ -9,7 +9,7 @@
             pos: self.pos
             size: self.size
 
-    # Header Icon
+    # Header Section
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
@@ -26,7 +26,6 @@
             keep_ratio: True
             mipmap: True
 
-    # Header Label — now just "Result" without disease name
     BoxLayout:
         orientation: "horizontal"
         size_hint: None, None
@@ -36,7 +35,7 @@
         spacing: 5.3
 
         Label:
-            text: "Result"
+            text: "Result" if not root.prediction_label else ("Result · " + str(root.prediction_label))
             color: 3/255, 30/255, 0/255, 1
             font_size: 32
             bold: True
@@ -54,11 +53,12 @@
 
         BoxLayout:
             orientation: "horizontal"
-            size: back_button.size
-            pos: back_button.pos
+            size: self.size
             spacing: 6
             padding: [0, 0, 0, 0]
             pos_hint: {"center_y": 0.5}
+            size: back_button.size
+            pos: back_button.pos
 
             Image:
                 source: "app/assets/back.png"
@@ -80,7 +80,7 @@
                 valign: "middle"
                 pos_hint: {"center_y": 0.5}
 
-    # Content Scroll Area
+    # Content Area Section
     ScrollView:
         size_hint: 1, None
         height: root.height * 0.88
@@ -97,33 +97,9 @@
             size_hint_y: None
             height: self.minimum_height
             padding: [30, 20, 30, 30]
-            spacing: 16
+            spacing: 30
 
-            # ── Disease name + date row above the photo ───────────────
-            BoxLayout:
-                orientation: "horizontal"
-                size_hint: 1, None
-                height: 36
-
-                Label:
-                    text: root.prediction_label if root.prediction_label else ""
-                    color: 5/255, 71/255, 5/255, 1
-                    font_size: 24
-                    bold: True
-                    halign: "left"
-                    valign: "middle"
-                    text_size: self.size
-
-                Label:
-                    text: root.formatted_timestamp if root.formatted_timestamp != "N/A" else ""
-                    color: 166/255, 166/255, 166/255, 1
-                    font_size: 13
-                    italic: True
-                    halign: "right"
-                    valign: "middle"
-                    text_size: self.size
-
-            # ── Image Display Card ────────────────────────────────────
+            # Image Display Card
             BoxLayout:
                 orientation: "vertical"
                 size_hint: 1, None
@@ -143,198 +119,269 @@
                         pos: self.pos
                         size: self.size
                         radius: [15]
-
+                
                 Image:
                     source: root.image_path if root.image_path else ""
                     allow_stretch: False
                     keep_ratio: True
 
-            # ── Severity % + Classification Tag row ───────────────────
-            BoxLayout:
-                orientation: "horizontal"
-                size_hint: 1, None
-                height: 80
-                spacing: 10
-
-                Label:
-                    text: str(int(root.severity_percentage)) + "%"
-                    color: (38/255, 164/255, 33/255, 1) if root.severity_level.lower() == 'healthy' else (207/255, 191/255, 44/255, 1) if root.severity_level.lower() == 'moderate' else (221/255, 45/255, 29/255, 1)
-                    font_size: 64
-                    bold: True
-                    size_hint_x: None
-                    width: self.texture_size[0]
-                    halign: "left"
-                    valign: "middle"
-
-                Widget:
-                    size_hint_x: 1
-
-                # Classification Tag — uses confidence_badge (Healthy / Early / Advance)
-                BoxLayout:
-                    size_hint: None, None
-                    size: 150, 36
-                    pos_hint: {"center_y": 0.5}
-
-                    canvas.before:
-                        Color:
-                            rgba: (201/255, 255/255, 142/255, 1) if root.confidence_badge_text == 'Healthy' else (255/255, 246/255, 149/255, 1) if root.confidence_badge_text == 'Early' else (255/255, 180/255, 168/255, 1) if root.confidence_badge_text == 'Advance' else (0.5, 0.5, 0.5, 1)
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [8]
-
-                    Label:
-                        text: root.confidence_badge_text
-                        color: (0/255, 82/255, 0/255, 1) if root.confidence_badge_text == 'Healthy' else (99/255, 91/255, 1/255, 1) if root.confidence_badge_text == 'Early' else (150/255, 22/255, 3/255, 1) if root.confidence_badge_text == 'Advance' else (1, 1, 1, 1)
-                        font_size: 15
-                        bold: True
-                        valign: "middle"
-                        halign: "center"
-                        text_size: self.size
-
-            # Severity Level sub-label
-            Label:
-                text: "SEVERITY LEVEL"
-                color: 100/255, 100/255, 100/255, 1
-                font_size: 12
-                bold: True
-                size_hint: 1, None
-                height: self.texture_size[1]
-                halign: "left"
-                valign: "middle"
-                text_size: self.width, None
-
-            # ── Leaf Data Section ─────────────────────────────────────
+            # Result Details Section
             BoxLayout:
                 orientation: "vertical"
                 size_hint: 1, None
                 height: self.minimum_height
-                spacing: 10
+                spacing: 15
 
+                # Percentage and Severity Tag Row
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 80
+                    spacing: 10
+
+                    Label:
+                        text: str(int(root.severity_percentage)) + "%"
+                        color: (38/255, 164/255, 33/255, 1) if root.severity_level.lower() == 'healthy' else (207/255,191/255,44/255,1) if root.severity_level.lower() == 'moderate' else (221/255,45/255,29/255,1)
+                        font_size: 64
+                        bold: True
+                        size_hint_x: None
+                        width: self.texture_size[0]
+                        halign: "left"
+                        valign: "middle"
+
+                    Widget:
+                        size_hint_x: 1
+
+                    BoxLayout:
+                        size_hint: None, None
+                        size: 140, 30
+                        pos_hint: {"center_y": 0.8}
+                    
+                        canvas.before:
+                            Color:
+                                rgba: (201/255, 255/255, 142/255, 1) if root.severity_level.lower() == 'healthy' else (255/255, 246/255, 149/255, 1) if root.severity_level.lower() == 'moderate' else (255/255, 180/255, 168/255, 1)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [8]
+
+                        Label:
+                            text: root.severity_level.upper() if root.severity_level else "UNKNOWN"
+                            color: (0/255, 82/255, 0/255, 1) if root.severity_level.lower() == 'healthy' else (99/255,91/255,1/255,1) if root.severity_level.lower() == 'moderate' else (150/255,22/255,3/255,1)
+                            font_size: 16
+                            bold: True
+                            valign: "middle"
+                            halign: "center"
+                            text_size: self.size
+
+                # Severity Level Label
                 Label:
-                    text: "Leaf Data"
-                    color: 0, 0, 0, 1
-                    font_size: 18
+                    text: "SEVERITY LEVEL" if root.severity_level else "SEVERITY LEVEL (N/A)"
+                    color: 100/255, 100/255, 100/255, 1
+                    font_size: 12
                     bold: True
                     size_hint: 1, None
-                    height: self.texture_size[1] + 4
+                    height: self.texture_size[1]
                     halign: "left"
                     valign: "middle"
                     text_size: self.width, None
 
+                # Leaf Data Header
+                Label:
+                    text: "Leaf Data" if root.prediction_label else "Leaf Data (No prediction)"
+                    color: 0, 0, 0, 1
+                    font_size: 18
+                    bold: True
+                    size_hint: 1, None
+                    height: self.texture_size[1] + 10
+                    halign: "left"
+                    valign: "middle"
+                    text_size: self.width, None
+
+                # Description
                 Label:
                     text: root.disease_description if root.disease_description else ("Healthy leaf with no detected disease." if root.severity_level.lower() == 'healthy' else ((str(root.prediction_label) + " detected \u00b7 " + str(round(root.severity_percentage, 1)) + "% affected.") if root.prediction_label else "No disease prediction available."))
                     color: 0, 0, 0, 1
-                    font_size: 15
-                    size_hint: 1, None
-                    height: self.texture_size[1] + 8
-                    halign: "left"
-                    valign: "top"
-                    text_size: self.width, None
-
-            # ── Symptoms Section ──────────────────────────────────────
-            BoxLayout:
-                orientation: "vertical"
-                size_hint: 1, None
-                height: self.minimum_height
-                spacing: 10
-
-                Label:
-                    text: "Symptoms" if root.disease_symptoms else ""
-                    color: 0, 0, 0, 1
                     font_size: 18
-                    bold: True
                     size_hint: 1, None
-                    height: self.texture_size[1] + 4 if root.disease_symptoms else 0
-                    halign: "left"
-                    valign: "middle"
-                    text_size: self.width, None
-
-                Label:
-                    text: root.disease_symptoms
-                    color: 0, 0, 0, 1
-                    font_size: 15
-                    size_hint: 1, None
-                    height: self.texture_size[1] + 8 if root.disease_symptoms else 0
+                    height: self.texture_size[1] + 20
                     halign: "left"
                     valign: "top"
                     text_size: self.width, None
 
-            # ── Prevention Section ────────────────────────────────────
-            BoxLayout:
-                orientation: "vertical"
-                size_hint: 1, None
-                height: self.minimum_height
-                spacing: 10
-
-                Label:
-                    text: "Prevention" if root.disease_prevention else ""
-                    color: 0, 0, 0, 1
-                    font_size: 18
-                    bold: True
+                # Disease Details Section
+                BoxLayout:
+                    orientation: 'vertical'
                     size_hint: 1, None
-                    height: self.texture_size[1] + 4 if root.disease_prevention else 0
-                    halign: "left"
-                    valign: "middle"
-                    text_size: self.width, None
+                    height: self.minimum_height
+                    spacing: 6
 
-                Label:
-                    text: root.disease_prevention
-                    color: 0, 0, 0, 1
-                    font_size: 15
+                    Label:
+                        text: 'Symptoms' if root.disease_symptoms else ''
+                        color: 0,0,0,1
+                        font_size: 16
+                        bold: True if root.disease_symptoms else False
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.width, None
+
+                    Label:
+                        text: root.disease_symptoms
+                        color: 0,0,0,1
+                        font_size: 15
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
+                        valign: 'top'
+                        text_size: self.width, None
+
+                    Label:
+                        text: 'Prevention' if root.disease_prevention else ''
+                        color: 0,0,0,1
+                        font_size: 16
+                        bold: True if root.disease_prevention else False
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.width, None
+
+                    Label:
+                        text: root.disease_prevention
+                        color: 0,0,0,1
+                        font_size: 15
+                        size_hint_y: None
+                        height: self.texture_size[1]
+                        halign: 'left'
+                        valign: 'top'
+                        text_size: self.width, None
+
+                # Date Section
+                BoxLayout:
+                    orientation: "vertical"
                     size_hint: 1, None
-                    height: self.texture_size[1] + 8 if root.disease_prevention else 0
-                    halign: "left"
-                    valign: "top"
-                    text_size: self.width, None
+                    height: self.minimum_height
+                    spacing: 8
 
-            # ── Bottom Action Bar ─────────────────────────────────────
-            BoxLayout:
-                orientation: "horizontal"
-                size_hint: 1, None
-                height: 50
-                padding: [0, 10, 0, 0]
+                    Label:
+                        text: "Date Scanned"
+                        color: 0, 0, 0, 1
+                        font_size: 18
+                        bold: True
+                        size_hint: 1, None
+                        height: self.texture_size[1]
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.width, None
 
-                # Spacer left
-                Widget:
-                    size_hint_x: 1
+                    Label:
+                        text: root.formatted_timestamp
+                        color: 0, 0, 0, 1
+                        font_size: 18
+                        size_hint: 1, None
+                        height: self.texture_size[1]
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.width, None
 
-                # More Info Button — centered, with 3-layer shadow like FilterButton
-                Button:
-                    id: view_info_button
-                    text: "More Info"
-                    size_hint: None, None
-                    size: 160, 40
-                    background_normal: ""
-                    background_color: 0, 0, 0, 0
-                    color: (0/255, 56/255, 0/255, 1)
-                    font_size: 14
-                    bold: True
-                    on_press: root.view_full_info()
+                # Bottom Action Bar
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 60
+                    spacing: 15
+                    padding: [0, 20, 0, 0]
 
-                    canvas.before:
-                        # Outer shadow — hidden when pressed
-                        Color:
-                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.18)
-                        RoundedRectangle:
-                            pos: self.x + 1, self.y - 3
-                            size: self.size
-                            radius: [7]
-                        # Bottom edge / depth strip — hidden when pressed
-                        Color:
-                            rgba: (0, 0, 0, 0) if self.state == 'down' else (180/255, 180/255, 180/255, 1)
-                        RoundedRectangle:
-                            pos: self.x, self.y - 2
-                            size: self.size
-                            radius: [7]
-                        # Main face — slightly darker when pressed, shifts down
-                        Color:
-                            rgba: (220/255, 220/255, 220/255, 1) if self.state == 'down' else (241/255, 241/255, 241/255, 1)
-                        RoundedRectangle:
-                            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
-                            size: self.size
-                            radius: [7]
+                    # Confidence Badge
+                    BoxLayout:
+                        size_hint: None, None
+                        size: 180, 40
+                        
+                        canvas.before:
+                            Color:
+                                rgba: app.get_color_from_hex(root.confidence_badge_color) if root.confidence_badge_color else (0.5, 0.5, 0.5, 1)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [8]
+                        
+                        Label:
+                            text: root.confidence_badge_text
+                            color: 1, 1, 1, 1
+                            font_size: 13
+                            bold: True
+                            halign: "center"
+                            valign: "middle"
 
-                # Spacer right
-                Widget:
-                    size_hint_x: 1
+                    Widget:
+                        size_hint_x: 1
+
+                    # Retake Button
+                    RoundedButton:
+                        id: retake_button
+                        size_hint: None, None
+                        size: 120, 40
+                        on_release: root.go_to_retake()
+                        
+                        BoxLayout:
+                            orientation: "horizontal"
+                            size: self.parent.size
+                            pos: self.parent.pos
+                            spacing: 8
+                            padding: [8, 0, 8, 0]
+                            
+                            Image:
+                                source: "app/assets/scan.png"
+                                allow_stretch: True
+                                keep_ratio: True
+                                size_hint: None, None
+                                size: 22, 22
+                                pos_hint: {"center_y": 0.5}
+                                mipmap: True
+                            
+                            Label:
+                                text: "Retake"
+                                color: 3/255, 30/255, 0/255, 1
+                                font_size: 16
+                                bold: True
+                                size_hint_x: None
+                                width: self.texture_size[0]
+                                halign: "left"
+                                valign: "middle"
+                                pos_hint: {"center_y": 0.5}
+
+                    # View Info Button
+                    RoundedButton:
+                        id: view_info_button
+                        size_hint: None, None
+                        size: 140, 40
+                        on_release: root.view_full_info()
+                        
+                        BoxLayout:
+                            orientation: "horizontal"
+                            size: self.parent.size
+                            pos: self.parent.pos
+                            spacing: 8
+                            padding: [12, 0, 12, 0]
+                            
+                            Image:
+                                source: "app/assets/result.png"
+                                allow_stretch: True
+                                keep_ratio: True
+                                size_hint: None, None
+                                size: 22, 22
+                                pos_hint: {"center_y": 0.5}
+                                mipmap: True
+                            
+                            Label:
+                                text: "View Info"
+                                color: 3/255, 30/255, 0/255, 1
+                                font_size: 16
+                                bold: True
+                                size_hint_x: None
+                                width: self.texture_size[0]
+                                halign: "left"
+                                valign: "middle"
+                                pos_hint: {"center_y": 0.5}
