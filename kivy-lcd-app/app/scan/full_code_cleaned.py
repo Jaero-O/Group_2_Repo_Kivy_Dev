@@ -3,33 +3,92 @@ Mango Leaf Disease Detection System
 Professional production-ready pipeline
 """
 
+# Suppress ONNX and other warnings BEFORE any imports
+import os
+import sys
+os.environ["ORT_LOG_SEVERITY_LEVEL"] = "4"  # 4 = Fatal only
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+os.environ["GLOG_minloglevel"] = "3"
+
 import RPi.GPIO as GPIO
 import time
 from picamera2 import Picamera2
 import cv2
 import numpy as np
-import os
-import sys
 import json
 import subprocess
 from datetime import datetime
 from multiprocessing import Process
 from PIL import Image, ImageOps
+import sqlite3
+from pathlib import Path
 
-# Suppress ONNX warnings
-os.environ["ORT_LOG_SEVERITY_LEVEL"] = "3"
 from rembg.bg import remove
 from rembg.session_factory import new_session
-from analyze_leaf import analyze_leaf
+
+# Print startup message to stderr for debugging
+print("=== Scan Script Starting ===", file=sys.stderr)
+print(f"Script location: {__file__}", file=sys.stderr)
+print(f"Working directory: {os.getcwd()}", file=sys.stderr)
+
+try:
+    from analyze_leaf import analyze_leaf
+    print("✓ analyze_leaf imported successfully", file=sys.stderr)
+except ImportError as e:
+    print(f"✗ Failed to import analyze_leaf: {e}", file=sys.stderr)
+    print(f"  Python path: {sys.path}", file=sys.stderr)
+    sys.exit(1)
 
 # ============================================================
 # CONFIGURATION
 # ============================================================
+# Determine base paths relative to this script
+SCRIPT_DIR = Path(__file__).parent.absolute()
+PROJECT_ROOT = SCRIPT_DIR.parent.parent.parent  # Go up to mangofy-system root
+DATA_DIR = PROJECT_ROOT / "data"
+KIVY_APP_DIR = PROJECT_ROOT / "kivy-lcd-app"
+
+print(f"SCRIPT_DIR: {SCRIPT_DIR}", file=sys.stderr)
+print(f"PROJECT_ROOT: {PROJECT_ROOT}", file=sys.stderr)
+print(f"DATA_DIR: {DATA_DIR}", file=sys.stderr)
+
+# Create base scans directory
+SCANS_BASE_DIR = DATA_DIR / "scans"
+SCANS_BASE_DIR.mkdir(parents=True, exist_ok=True)
+print(f"✓ Scans directory ready: {SCANS_BASE_DIR}", file=sys.stderr)
+
+# Generate unique scan directory with timestamp
+SCAN_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
+SCAN_DIR = SCANS_BASE_DIR / f"scan_{SCAN_TIMESTAMP}"
+SCAN_DIR.mkdir(exist_ok=True)
+print(f"✓ Created scan directory: {SCAN_DIR}", file=sys.stderr)
+
+# Determine Python executable for ONNX environment
+ONNX_PYTHON = os.getenv("ONNX_PYTHON_PATH", "python3")  # Default to system python3
+
+# Verify critical files exist
+model_path = SCRIPT_DIR / "resnet_leafdisease_datasetresized.onnx"
+classifier_path = SCRIPT_DIR / "classify_leaf.py"
+db_path = KIVY_APP_DIR / "mangofy.db"
+
+print(f"Checking model: {model_path} - {'EXISTS' if model_path.exists() else 'MISSING'}", file=sys.stderr)
+print(f"Checking classifier: {classifier_path} - {'EXISTS' if classifier_path.exists() else 'MISSING'}", file=sys.stderr)
+print(f"Checking database: {db_path} - {'EXISTS' if db_path.exists() else 'MISSING'}", file=sys.stderr)
+
+if not model_path.exists():
+    print(f"ERROR: Model file not found at {model_path}", file=sys.stderr)
+    sys.exit(1)
+if not classifier_path.exists():
+    print(f"ERROR: Classifier script not found at {classifier_path}", file=sys.stderr)
+    sys.exit(1)
+
 CONFIG = {
-    "model_path": "/home/kennethbinasa/kivy_v1/kivy-lcd-app/app/scan/resnet_leafdisease_datasetresized.onnx",
-    "classifier_script": "/home/kennethbinasa/kivy_v1/kivy-lcd-app/app/scan/classify_leaf.py",
-    "python_310_path": "/home/kennethbinasa/onnx_venv/bin/python",
-    "input_image_path": "output_image_original.png",
+    "model_path": str(model_path),
+    "classifier_script": str(classifier_path),
+    "python_310_path": ONNX_PYTHON,
+    "database_path": str(db_path),
+    "scan_dir": str(SCAN_DIR),
+    "input_image_path": str(SCAN_DIR / "output_image_original.png"),
     # GPIO Pins
     "dir_pin": 5,
     "step_pin": 12,
@@ -48,10 +107,10 @@ CONFIG = {
     "target_height": 800,
     "crop_top_px": [0, 169, 133, 120],
     "left_shifts": [0, -9, -13, -29],
-    # Output
-    "output_stitched": "full_leaf_stitched_v3_separate.jpg",
-    "output_reduced": "output_image_reduced.png",
-    "output_json": "scan_results.json"
+    # Output (all in scan directory)
+    "output_stitched": str(SCAN_DIR / "full_leaf_stitched.jpg"),
+    "output_reduced": str(SCAN_DIR / "output_image_reduced.png"),
+    "output_json": str(SCAN_DIR / "scan_results.json")
 }
 
 # ============================================================
@@ -155,7 +214,7 @@ def home_motor(retries=2):
         move_to_sensor(GPIO.LOW)
         time.sleep(0.5)
         if GPIO.input(CONFIG["ir_pin"]) == GPIO.HIGH:
-            current_pos = 0
+            curstr(SCAN_DIR / f"frame_{frame_num:02d}.jpg")
             report_phase("homing", pct=100)
             return True
     results["errors"].append("Homing failed")
@@ -166,7 +225,7 @@ def home_motor(retries=2):
 # IMAGE CAPTURE
 # ============================================================
 def capture_image(frame_num):
-    filename = f"frame_{frame_num:02d}.jpg"
+    filename = str(SCAN_DIR / f"frame_{frame_num:02d}.jpg")
     GPIO.output(CONFIG["light_pin"], GPIO.LOW)
     time.sleep(0.5)
     picam2.capture_file(filename)
@@ -188,12 +247,23 @@ def scan_and_stitch():
         capture_image(frame_idx)
 
     # Load and stitch images
-    frames = [f"frame_{i:02d}.jpg" for i in range(len(CONFIG["abs_positions"]))]
+    frames = [str(SCAN_DIR / f"frame_{i:02d}.jpg") for i in range(len(CONFIG["abs_positions"]))]
+    print(f"Loading frames from: {frames[0]}", file=sys.stderr)
+    
     images = [cv2.imread(f) for f in frames]
-    if any(img is None for img in images):
+    
+    # Check which frames failed to load
+    failed_frames = [f for i, (f, img) in enumerate(zip(frames, images)) if img is None]
+    if failed_frames:
+        print(f"✗ Failed to load frames: {failed_frames}", file=sys.stderr)
+        for frame_path in frames:
+            exists = Path(frame_path).exists()
+            print(f"  {frame_path}: {'EXISTS' if exists else 'MISSING'}", file=sys.stderr)
         results["errors"].append("Failed to load frames")
         report_phase("error", message="Failed to load frames")
         return False
+    
+    print(f"✓ All {len(images)} frames loaded successfully", file=sys.stderr)
 
     # Crop & stitch
     for i in range(1, 4):
@@ -276,6 +346,137 @@ def classify_leaf():
         return {"error": str(e)}
 
 # ============================================================
+# DATABASE STORAGE
+# ============================================================
+def save_to_database():
+    """Save complete scan results to database."""
+    try:
+        db_path = CONFIG["database_path"]
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        
+        # Extract results
+        classification = results.get("classification", {})
+        analysis = results.get("analysis", {})
+        
+        disease_class = classification.get("class", "Unknown")
+        confidence = classification.get("confidence", 0.0)
+        all_preds = classification.get("all_predictions", {})
+        
+        # Map disease class to disease_id
+        disease_map = {
+            "Anthracnose": 1,
+            "Healthy": None,
+            "Bacterial Canker": 2,
+            "Cutting Weevil": 3,
+            "Powdery Mildew": 4,
+            "Sooty Mould": 5,
+        }
+        disease_id = disease_map.get(disease_class, None)
+        
+        # Extract severity info
+        severity_pct = analysis.get("severity_percent", 0.0) if analysis else 0.0
+        severity_level = analysis.get("severity_level", "None") if analysis else "None"
+        
+        # Map severity level to severity_level_id
+        severity_map = {"None": None, "Low": 1, "Moderate": 2, "High": 3}
+        severity_id = severity_map.get(severity_level, None)
+        
+        # Construct relative image paths
+        scan_dir_name = Path(CONFIG["scan_dir"]).name
+        
+        # Image paths with existence verification
+        reduced_image = Path(CONFIG["output_reduced"])
+        image_path = f"../data/scans/{scan_dir_name}/{reduced_image.name}" if reduced_image.exists() else None
+        
+        stitched_image = Path(CONFIG["output_stitched"])
+        thumbnail_path = f"../data/scans/{scan_dir_name}/{stitched_image.name}" if stitched_image.exists() else image_path
+        
+        json_file = Path(CONFIG["output_json"])
+        json_path = f"../data/scans/{scan_dir_name}/{json_file.name}" if json_file.exists() else None
+        
+        # Build comprehensive notes
+        notes = f"Scan: {scan_dir_name} | Disease: {disease_class}"
+        if severity_level != "None":
+            notes += f" | Severity: {severity_level} ({severity_pct:.1f}%)"
+        
+        # Insert complete scan record
+        cur.execute("""
+            INSERT INTO tbl_scan_record (
+                tree_id, disease_id, severity_level_id,
+                scan_timestamp, scan_duration, scan_status,
+                disease_class, confidence_score,
+                pred_anthracnose, pred_healthy, pred_bacterial_canker,
+                pred_cutting_weevil, pred_powdery_mildew, pred_sooty_mould,
+                severity_percentage, severity_level,
+                leaf_area_cm2, lesion_area_cm2, lesion_count, mean_lesion_size_px,
+                leaf_mean_r, leaf_mean_g, leaf_mean_b,
+                lesion_mean_r, lesion_mean_g, lesion_mean_b,
+                lesion_to_leaf_color_ratio_g,
+                exg_mean, ndvi_proxy_mean,
+                leaf_solidity, leaf_circularity, leaf_aspect_ratio,
+                damage_pct_inpaint, lesion_glcm_contrast, lesion_glcm_dissimilarity,
+                image_path, thumbnail_path, json_path, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            None,  # tree_id - can be set later
+            disease_id,
+            severity_id,
+            datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            results.get("timings", {}).get("total", 0.0),
+            results.get("status", "unknown"),
+            disease_class,
+            confidence,
+            all_preds.get("Anthracnose", 0.0),
+            all_preds.get("Healthy", 0.0),
+            all_preds.get("Bacterial Canker", 0.0),
+            all_preds.get("Cutting Weevil", 0.0),
+            all_preds.get("Powdery Mildew", 0.0),
+            all_preds.get("Sooty Mould", 0.0),
+            severity_pct,
+            severity_level,
+            analysis.get("leaf_area_cm2", 0.0) if analysis else 0.0,
+            analysis.get("lesion_area_cm2", 0.0) if analysis else 0.0,
+            analysis.get("lesion_count", 0) if analysis else 0,
+            analysis.get("mean_lesion_size_px", 0.0) if analysis else 0.0,
+            analysis.get("leaf_mean_r", 0.0) if analysis else 0.0,
+            analysis.get("leaf_mean_g", 0.0) if analysis else 0.0,
+            analysis.get("leaf_mean_b", 0.0) if analysis else 0.0,
+            analysis.get("lesion_mean_r", 0.0) if analysis else 0.0,
+            analysis.get("lesion_mean_g", 0.0) if analysis else 0.0,
+            analysis.get("lesion_mean_b", 0.0) if analysis else 0.0,
+            analysis.get("lesion_to_leaf_color_ratio_g", 0.0) if analysis else 0.0,
+            analysis.get("exg_mean", 0.0) if analysis else 0.0,
+            analysis.get("ndvi_proxy_mean", 0.0) if analysis else 0.0,
+            analysis.get("leaf_solidity", 0.0) if analysis else 0.0,
+            analysis.get("leaf_circularity", 0.0) if analysis else 0.0,
+            analysis.get("leaf_aspect_ratio", 0.0) if analysis else 0.0,
+            analysis.get("damage_pct_inpaint", 0.0) if analysis else 0.0,
+            analysis.get("lesion_glcm_contrast", 0.0) if analysis else 0.0,
+            analysis.get("lesion_glcm_dissimilarity", 0.0) if analysis else 0.0,
+            image_path,
+            thumbnail_path,
+            json_path,
+            notes
+        ))
+        
+        conn.commit()
+        scan_id = cur.lastrowid
+        results["database_id"] = scan_id
+        conn.close()
+        
+        print(f"✓ Saved to database (scan_id: {scan_id})", file=sys.stderr)
+        print(f"  Image: {image_path}", file=sys.stderr)
+        print(f"  Thumbnail: {thumbnail_path}", file=sys.stderr)
+        print(f"  JSON: {json_path}", file=sys.stderr)
+        return scan_id
+        
+    except Exception as e:
+        print(f"✗ Database save failed: {e}", file=sys.stderr)
+        results["errors"].append(f"Database error: {e}")
+        return None
+
+# ============================================================
 # LEAF ANALYSIS
 # ============================================================
 def analyze_leaf_features():
@@ -297,9 +498,21 @@ def run_pipeline():
     start_time = time.time()
     try:
         home_motor()
-        scan_and_stitch()
+        
+        # Scan and stitch - abort if it fails
+        if not scan_and_stitch():
+            results["timings"]["total"] = time.time() - start_time
+            results["status"] = "error"
+            return False
+        
         home_motor()
-        process_leaf_image(CONFIG["output_stitched"], CONFIG["output_reduced"])
+        
+        # Process image - abort if it fails
+        if not process_leaf_image(CONFIG["output_stitched"], CONFIG["output_reduced"]):
+            results["timings"]["total"] = time.time() - start_time
+            results["status"] = "error"
+            return False
+        
         classification = classify_leaf()
         results["classification"] = classification
         if "error" not in classification and classification.get("class") != "Healthy":
@@ -307,6 +520,10 @@ def run_pipeline():
             results["analysis"] = analysis
         results["timings"]["total"] = time.time() - start_time
         results["status"] = "success"
+        
+        # Save to database
+        scan_id = save_to_database()
+        
         report_phase("complete", pct=100, reduced_image=CONFIG["output_reduced"])
         return True
     except Exception as e:
@@ -322,21 +539,26 @@ def run_pipeline():
 if __name__ == "__main__":
     try:
         run_pipeline()
+        
+        # Save results JSON to file
         with open(CONFIG["output_json"], "w") as f:
             json.dump(results, f, indent=2)
+        
+        # Print summary to stderr (keeps stdout clean for JSON)
+        print("\n" + "="*50, file=sys.stderr)
+        print(f"SCAN COMPLETE - Saved to: {CONFIG['scan_dir']}", file=sys.stderr)
+        print("="*50, file=sys.stderr)
+        
         # ===============================
-        # FINAL PRINT OUTPUT
+        # FINAL PRINT OUTPUT TO STDERR
         # ===============================
-        print("\n===== FINAL RESULTS =====")
+        print("\n===== FINAL RESULTS =====", file=sys.stderr)
 
         # Classification result
-        cls = results.get("classification", {})
+        cls = results.get("classification") or {}
         disease_class = cls.get("class", "Unknown")
         confidence = cls.get("confidence", None)
 
-        # print(f"Disease Type      : {disease_class}")
-
-        # --- ADD THIS BLOCK ---
         # High-level disease group
         if disease_class.lower() == "anthracnose":
             final_label = "Anthracnose"
@@ -345,13 +567,12 @@ if __name__ == "__main__":
         else:
             final_label = "Non-anthracnose"
 
-        print(f"Final Classification : {final_label}")
-        # -----------------------
+        print(f"Final Classification : {final_label}", file=sys.stderr)
 
         if confidence is not None:
-            print(f"Confidence Level  : {confidence * 100:.2f}%")
+            print(f"Confidence Level  : {confidence * 100:.2f}%", file=sys.stderr)
         else:
-            print("Confidence Level  : N/A")
+            print("Confidence Level  : N/A", file=sys.stderr)
 
         # Severity (only if diseased)
         analysis = results.get("analysis", None)
@@ -360,19 +581,22 @@ if __name__ == "__main__":
             level = analysis.get("severity_level", None)
 
             if severity is not None:
-                print(f"Severity Percent  : {severity:.2f}%")
+                print(f"Severity Percent  : {severity:.2f}%", file=sys.stderr)
             else:
-                print("Severity Percent  : N/A")
+                print("Severity Percent  : N/A", file=sys.stderr)
 
             if level is not None:
-                print(f"Severity Level    : {level}")
+                print(f"Severity Level    : {level}", file=sys.stderr)
             else:
-                print("Severity Level    : N/A")
+                print("Severity Level    : N/A", file=sys.stderr)
         else:
-            print("Severity Percent  : 0% (Healthy or No lesions)")
-            print("Severity Level    : None / Healthy")
+            print("Severity Percent  : 0% (Healthy or No lesions)", file=sys.stderr)
+            print("Severity Level    : None / Healthy", file=sys.stderr)
 
-        print("==========================\n")
+        print("==========================\n", file=sys.stderr)
+        
+        # Output final JSON to stdout for parent process to read
+        print(json.dumps(results), flush=True)
 
     finally:
         GPIO.output(CONFIG["light_pin"], GPIO.HIGH)

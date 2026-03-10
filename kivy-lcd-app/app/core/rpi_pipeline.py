@@ -1,547 +1,1000 @@
-"""
-Raspberry Pi Hardware Pipeline
-Wrapper for Kivy integration
-"""
-
-import RPi.GPIO as GPIO
-import time
-from picamera2 import Picamera2
-import cv2
-import numpy as np
 import os
-import json
-import subprocess
-from datetime import datetime
-from PIL import Image, ImageOps
+import sqlite3
+from contextlib import closing
+from typing import Optional, List, Dict, Any, Callable
+import threading
+import time
+from functools import wraps
+from kivy.clock import Clock
 
+# Environment overrides
+_DB_PATH = os.getenv("MANGOFY_DB_PATH", os.path.join(os.getcwd(), "mangofy.db"))
 
-# Suppress ONNX warnings
-os.environ["ORT_LOG_SEVERITY_LEVEL"] = "3"
+PRAGMAS = [
+    "PRAGMA foreign_keys=ON;",
+    "PRAGMA journal_mode=WAL;",
+    "PRAGMA synchronous=NORMAL;",
+]
 
-# Try to import analyze_leaf
-try:
-    from analyze_leaf import analyze_leaf
-except ImportError:
-    analyze_leaf = None
-
-
-class RPiPipeline:
+SCHEMA_STATEMENTS = [
     """
-    Raspberry Pi hardware pipeline for mango leaf disease detection.
-    Integrates motor control, camera capture, stitching, and analysis.
+    CREATE TABLE IF NOT EXISTS tbl_tree (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        location TEXT,
+        variety TEXT,
+        created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    """,
     """
-
-    def __init__(self, config=None, callback=None):
-        """
-        Initialize pipeline with configuration and progress callback.
-
-        Args:
-            config: Optional config dict to override defaults
-            callback: Progress callback function(phase: str, data: dict) -> bool
-                     Returns False to cancel operation
-        """
-        self.config = self._get_config(config)
-        self.callback = callback
-        self.cancel_requested = False
-        self.current_pos = 0
-
-        self.results = {
-            "timestamp": datetime.now().isoformat(),
-            "timings": {},
-            "classification": None,
-            "analysis": None,
-            "errors": [],
-            "status": "initializing"
-        }
-
-        # Initialize hardware
-        self._init_gpio()
-        self._init_camera()
-
-    def _get_config(self, custom_config):
-        """Get configuration with defaults"""
-        config = {
-            "model_path": "/home/kennethbinasa/kivy_v1/ml/resnet_leafdisease_datasetresized.onnx",
-            "python_310_path": "/home/kennethbinasa/onnx_venv/bin/python",
-            "python_313_path": "/home/kennethbinasa/system_venv/bin/python",
-            "remove_bg_path": "/home/kennethbinasa/kivy_v1/kivy-lcd-app/app/core/remove_bg.py",
-            "classify_leaf_path": "/home/kennethbinasa/kivy_v1/kivy-lcd-app/app/core/classify_leaf.py",
-            "input_image_path": "output_image_original.png",
-
-            # GPIO Pins
-            "dir_pin": 5,
-            "step_pin": 12,
-            "enable_pin": 6,
-            "light_pin": 13,
-            "ir_pin": 26,
-
-            # Motion parameters
-            "max_steps": 19322,
-            "abs_positions": [0, 6453, 12956, 19459],
-            "max_freq": 8000,
-            "step_distance_mm": 0.01,
-            "step_reduction": 150,
-
-            # Image processing
-            "camera_size": (2304, 1296),
-            "target_width": 480,
-            "target_height": 800,
-            "crop_top_px": [0, 169, 133, 120],
-            "left_shifts": [0, -9, -13, -29],
-
-            # Output
-            "output_stitched": "full_leaf_stitched.jpg",
-            "output_reduced": "output_image_reduced.png",
-            "output_json": "scan_results.json"
-        }
-
-        if custom_config:
-            config.update(custom_config)
-
-        return config
-
-    def _init_gpio(self):
-        """Initialize GPIO pins"""
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(self.config["dir_pin"], GPIO.OUT)
-        GPIO.setup(self.config["step_pin"], GPIO.OUT)
-        GPIO.setup(self.config["enable_pin"], GPIO.OUT, initial=GPIO.HIGH)
-        GPIO.setup(self.config["light_pin"], GPIO.OUT, initial=GPIO.HIGH)
-        GPIO.setup(self.config["ir_pin"], GPIO.IN)
-
-    def _init_camera(self):
-        """Initialize camera with settings"""
-        self.picam2 = Picamera2()
-        self.picam2.configure(self.picam2.create_still_configuration(
-            main={"size": self.config["camera_size"]}
-        ))
-        self.picam2.start()
-        time.sleep(0.5)
-        self.picam2.set_controls({"AfMode": 0, "LensPosition": 9})
-
-        # Camera warm-up
-        GPIO.output(self.config["light_pin"], GPIO.LOW)
-        self.picam2.set_controls({"AeEnable": True, "AwbEnable": True})
-        time.sleep(3)
-        self.picam2.set_controls({"AeEnable": False, "AwbEnable": False})
-        GPIO.output(self.config["light_pin"], GPIO.HIGH)
-
-    def _progress(self, phase: str, data: dict = None) -> bool:
-        """
-        Report progress to callback.
-
-        Returns:
-            True to continue, False to cancel
-        """
-        if self.cancel_requested:
-            return False
-
-        if self.callback:
-            data = data or {}
-            return self.callback(phase, data) != False
-
-        return True
-
-    def cancel(self):
-        """Request cancellation of pipeline"""
-        self.cancel_requested = True
-
-    # ============================================================
-    # MOTOR CONTROL
-    # ============================================================
-
-    def _pulse_motor(self, freq, steps):
-        """Execute motor steps at specified frequency"""
-        delay = 1 / freq / 2
-        GPIO.output(self.config["enable_pin"], GPIO.LOW)
-        for _ in range(steps):
-            if self.cancel_requested:
-                break
-            GPIO.output(self.config["step_pin"], GPIO.HIGH)
-            time.sleep(delay)
-            GPIO.output(self.config["step_pin"], GPIO.LOW)
-            time.sleep(delay)
-        GPIO.output(self.config["enable_pin"], GPIO.HIGH)
-
-    def _move_steps(self, steps, direction):
-        """Move motor specified number of steps"""
-        GPIO.output(self.config["dir_pin"], direction)
-        self._pulse_motor(self.config["max_freq"], steps)
-        self.current_pos += steps if direction == GPIO.HIGH else -steps
-
-    def _move_to_sensor(self, direction):
-        """Move until IR sensor is triggered"""
-        GPIO.output(self.config["dir_pin"], direction)
-        delay = 1 / self.config["max_freq"] / 2
-        step_count = 0
-        GPIO.output(self.config["enable_pin"], GPIO.LOW)
-
-        while GPIO.input(self.config["ir_pin"]) != GPIO.HIGH:
-            if self.cancel_requested:
-                break
-            GPIO.output(self.config["step_pin"], GPIO.HIGH)
-            time.sleep(delay)
-            GPIO.output(self.config["step_pin"], GPIO.LOW)
-            time.sleep(delay)
-            step_count += 1
-
-        GPIO.output(self.config["enable_pin"], GPIO.HIGH)
-        return step_count
-
-    def _home_motor(self, retries=2):
-        """Home motor to IR sensor position"""
-        if not self._progress("homing", {"pct": 0}):
-            return False
-
-        for attempt in range(retries):
-            if self.cancel_requested:
-                return False
-
-            if GPIO.input(self.config["ir_pin"]) == GPIO.HIGH:
-                self.current_pos = 0
-                return True
-
-            self._move_to_sensor(GPIO.LOW)
-            time.sleep(0.5)
-
-            if GPIO.input(self.config["ir_pin"]) == GPIO.HIGH:
-                self.current_pos = 0
-                return True
-
-        self.results["errors"].append("Homing failed after retries")
-        self._progress("error", {"message": "Homing failed", "pct": 0})
-        return False
-
-    # ============================================================
-    # IMAGE CAPTURE
-    # ============================================================
-
-    def _capture_image(self, frame_num):
-        """Capture single frame"""
-        if not self._progress("capturing", {
-            "frame_index": frame_num + 1,
-            "total_frames": len(self.config["abs_positions"]),
-            "pct": (frame_num / len(self.config["abs_positions"])) * 40 + 10
-        }):
-            return None
-
-        filename = f"frame_{frame_num:02d}.jpg"
-        GPIO.output(self.config["light_pin"], GPIO.LOW)
-        time.sleep(0.5)
-        self.picam2.capture_file(filename)
-        GPIO.output(self.config["light_pin"], GPIO.HIGH)
-        time.sleep(0.5)
-        return filename
-
-    # ============================================================
-    # SCANNING & STITCHING
-    # ============================================================
-
-    def _scan_and_stitch(self):
-        """Execute full scan and stitch images"""
-        if not self._home_motor():
-            return False
-
-        # Capture all frames
-        frames = []
-        total_positions = len(self.config["abs_positions"])
-
-        for frame_idx, target_pos in enumerate(self.config["abs_positions"]):
-            if self.cancel_requested:
-                return False
-
-            # Position motor
-            if not self._progress("positioning", {
-                "frame_index": frame_idx + 1,
-                "total_frames": total_positions,
-                "pct": (frame_idx / total_positions) * 10 + 5
-            }):
-                return False
-
-            direction = GPIO.HIGH if target_pos > self.current_pos else GPIO.LOW
-            steps = max(abs(target_pos - self.current_pos) - self.config["step_reduction"], 0)
-            self._move_steps(steps, direction)
-
-            # Capture frame
-            frame_file = self._capture_image(frame_idx)
-            if frame_file:
-                frames.append(frame_file)
-
-        # Stitch images
-        if not self._progress("stitching", {"pct": 50}):
-            return False
-
-        images = [cv2.imread(f) for f in frames]
-
-        if any(img is None for img in images):
-            self.results["errors"].append("Failed to load captured frames")
-            self._progress("error", {"message": "Frame load failed", "pct": 50})
-            return False
-
-        # Crop frames
-        for i in range(1, 4):
-            h = images[i].shape[0]
-            crop_amt = min(self.config["crop_top_px"][i], h - 1)
-            images[i] = images[i][crop_amt:, :].copy()
-
-        # Stitch
-        width = max(img.shape[1] for img in images)
-        total_height = sum(img.shape[0] for img in images)
-        stitched = np.zeros((total_height, width, 3), dtype=np.uint8)
-
-        current_y = 0
-        for img, shift in zip(images, self.config["left_shifts"]):
-            h, w = img.shape[:2]
-            src_x_start = max(0, -shift)
-            src_x_end = w
-            x_start = max(0, shift)
-            width_to_paste = src_x_end - src_x_start
-            stitched[current_y:current_y + h, x_start:x_start + width_to_paste] = img[:, src_x_start:src_x_end]
-            current_y += h
-
-        cv2.imwrite(self.config["output_stitched"], stitched)
-        return True
-
-    # ============================================================
-    # IMAGE PROCESSING
-    # ============================================================
-
-    def _process_leaf_image(self):
-        """Remove background and prepare image"""
-        if not self._progress("processing", {"pct": 60}):
-            return False
-
-        try:
-            # 1. Call REMBG via subprocess
-            stitched = self.config["output_stitched"]
-            no_bg_path = "temp_no_bg.png"
-
-            result = subprocess.run(
-                [
-                    self.config["python_310_path"],
-                    self.config["remove_bg_path"],
-                    stitched,
-                    no_bg_path
-                ],
-                capture_output=True,
-                text=True,
-                check=False,
-                timeout=60
-            )
-
-            if result.returncode != 0:
-                self.results["errors"].append(
-                    f"REMBG subprocess failed: {result.stderr}"
-                )
-                self._progress("error", {"message": "Background removal failed"})
-                return False
-
-            # 2. Load background-removed image
-            img_pil = Image.open(no_bg_path).convert("RGBA")
-
-            # 3. Create white background
-            background = Image.new("RGB", img_pil.size, (255, 255, 255))
-            background.paste(img_pil, mask=img_pil.split()[3])
-
-            # ---- Continue processing ----
-            img_cv = cv2.cvtColor(np.array(background), cv2.COLOR_RGB2BGR)
-            gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-            _, leaf_mask = cv2.threshold(gray, 250, 255, cv2.THRESH_BINARY_INV)
-
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
-            leaf_mask = cv2.morphologyEx(leaf_mask, cv2.MORPH_CLOSE, kernel)
-            leaf_mask = cv2.morphologyEx(leaf_mask, cv2.MORPH_OPEN, kernel)
-
-            contours, _ = cv2.findContours(
-                leaf_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
-            )
-
-            if not contours:
-                self.results["errors"].append("No leaf detected in image")
-                self._progress("error", {"message": "No leaf detected", "pct": 60})
-                return False
-
-            # Crop leaf
-            leaf_contour = max(contours, key=cv2.contourArea)
-            x, y, w_crop, h_crop = cv2.boundingRect(leaf_contour)
-            cropped_leaf = img_cv[y:y + h_crop, x:x + w_crop]
-
-            # Save original
-            Image.fromarray(
-                cv2.cvtColor(cropped_leaf, cv2.COLOR_BGR2RGB)
-            ).save(self.config["input_image_path"])
-
-            # Resize and pad
-            img_final = Image.fromarray(
-                cv2.cvtColor(cropped_leaf, cv2.COLOR_BGR2RGB)
-            )
-
-            img_ratio = img_final.width / img_final.height
-            target_ratio = self.config["target_width"] / self.config["target_height"]
-
-            if img_ratio > target_ratio:
-                new_width = self.config["target_width"]
-                new_height = int(self.config["target_width"] / img_ratio)
-            else:
-                new_height = self.config["target_height"]
-                new_width = int(self.config["target_height"] * img_ratio)
-
-            img_resized = img_final.resize(
-                (new_width, new_height),
-                Image.Resampling.LANCZOS
-            )
-
-            img_final_padded = ImageOps.pad(
-                img_resized,
-                (self.config["target_width"], self.config["target_height"]),
-                color="white"
-            )
-
-            img_final_padded.save(self.config["output_reduced"])
-            return True
-
-        except Exception as e:
-            self.results["errors"].append(f"Processing error: {str(e)}")
-            self._progress("error", {"message": str(e), "pct": 60})
-            return False
-
-    # ============================================================
-    # CLASSIFICATION & ANALYSIS
-    # ============================================================
-
-    def _classify_leaf(self):
-        """Run classification"""
-        if not self._progress("classifying", {"pct": 75}):
-            return None
-
-        try:
-            result = subprocess.run(
-                [self.config["python_310_path"], self.config["classify_leaf_path"],
-                 self.config["input_image_path"], self.config["model_path"]],
-                capture_output=True,
-                text=True,
-                check=True,
-                timeout=30
-            )
-            return json.loads(result.stdout)
-        except subprocess.TimeoutExpired:
-            self.results["errors"].append("Classification timeout")
-            return {"error": "timeout"}
-        except subprocess.CalledProcessError as e:
-            self.results["errors"].append(f"Classification failed: {e.stderr}")
-            return {"error": e.stderr}
-        except json.JSONDecodeError:
-            self.results["errors"].append("Failed to parse classification result")
-            return {"error": "invalid_json"}
-
-    def _analyze_leaf_features(self):
-        """Run detailed leaf analysis"""
-        if analyze_leaf is None:
-            return None
-
-        if not self._progress("analyzing", {"pct": 85}):
-            return None
-
-        try:
-            leaf_id = int(datetime.now().timestamp())
-            record, vis_img = analyze_leaf(
-                self.config["input_image_path"],
-                leaf_id=leaf_id,
-                save_to_csv=True,
-                save_json=True
-            )
-
-            if vis_img is not None:
-                cv2.imwrite(f"leaf_analysis_{leaf_id}.jpg", vis_img)
-
-            return record
-        except Exception as e:
-            self.results["errors"].append(f"Analysis error: {str(e)}")
-            return None
-
-    # ============================================================
-    # MAIN PIPELINE
-    # ============================================================
-
-    def run_pipeline(self):
-        """
-        Execute complete detection pipeline.
-
-        Returns:
-            (success: bool, results: dict)
-        """
-        start_time = time.time()
-
-        try:
-            # Stage 1: Homing
-            t0 = time.time()
-            if not self._home_motor():
-                self.results["status"] = "homing_failed"
-            self.results["timings"]["homing_initial"] = time.time() - t0
-
-            # Stage 2: Scan and stitch
-            t0 = time.time()
-            if not self._scan_and_stitch():
-                self.results["status"] = "scan_failed"
-                return False, self.results
-            self.results["timings"]["scan_stitch"] = time.time() - t0
-
-            # Stage 3: Process image
-            t0 = time.time()
-            if not self._process_leaf_image():
-                self.results["status"] = "processing_failed"
-                return False, self.results
-            self.results["timings"]["processing"] = time.time() - t0
-
-            # Stage 4: Home motor (parallel with classification preparation)
-            self._home_motor()
-            GPIO.output(self.config["light_pin"], GPIO.HIGH)
-            GPIO.output(self.config["enable_pin"], GPIO.HIGH)
-
-            # Stage 5: Classification
-            t0 = time.time()
-            classification = self._classify_leaf()
-            if classification is None or "error" in classification:
-                self.results["status"] = "classification_failed"
-                return False, self.results
-            self.results["timings"]["classification"] = time.time() - t0
-            self.results["classification"] = classification
-
-            # Stage 6: Detailed analysis (if diseased)
-            if classification.get("class") != "Healthy":
-                t0 = time.time()
-                analysis = self._analyze_leaf_features()
-                self.results["timings"]["analysis"] = time.time() - t0
-                self.results["analysis"] = analysis
-
-            self.results["timings"]["total"] = time.time() - start_time
-            self.results["status"] = "success"
-            self.results["output_image"] = self.config["output_reduced"]
-
-            # Save results
-            with open(self.config["output_json"], "w") as f:
-                json.dump(self.results, f, indent=2)
-
-            self._progress("complete", {"pct": 100})
-
-            return True, self.results
-
-        except Exception as e:
-            self.results["status"] = "error"
-            self.results["errors"].append(f"Pipeline error: {str(e)}")
-            self.results["timings"]["total"] = time.time() - start_time
-            self._progress("error", {"message": str(e), "pct": 0})
-            return False, self.results
-
-    def cleanup(self):
-        """Clean up hardware resources"""
-        try:
-            GPIO.output(self.config["light_pin"], GPIO.HIGH)
-            GPIO.output(self.config["enable_pin"], GPIO.HIGH)
-            # GPIO.cleanup()
-        except Exception as e:
-            print(f"Cleanup error: {e}")
+    CREATE TABLE IF NOT EXISTS tbl_disease (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        description TEXT,
+        symptoms TEXT,
+        prevention TEXT
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS tbl_severity_level (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL,
+        description TEXT
+    );
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS tbl_scan_record (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        tree_id INTEGER REFERENCES tbl_tree(id) ON DELETE CASCADE,
+        disease_id INTEGER REFERENCES tbl_disease(id) ON DELETE SET NULL,
+        severity_level_id INTEGER REFERENCES tbl_severity_level(id) ON DELETE SET NULL,
+        
+        -- Core scan metadata
+        scan_timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+        scan_duration REAL,
+        scan_status TEXT,
+        
+        -- Classification results
+        disease_class TEXT,
+        confidence_score REAL,
+        pred_anthracnose REAL,
+        pred_healthy REAL,
+        pred_bacterial_canker REAL,
+        pred_cutting_weevil REAL,
+        pred_powdery_mildew REAL,
+        pred_sooty_mould REAL,
+        
+        -- Severity analysis
+        severity_percentage REAL,
+        severity_level TEXT,
+        
+        -- Leaf measurements
+        leaf_area_cm2 REAL,
+        lesion_area_cm2 REAL,
+        lesion_count INTEGER,
+        mean_lesion_size_px REAL,
+        
+        -- Color analysis - Leaf
+        leaf_mean_r REAL,
+        leaf_mean_g REAL,
+        leaf_mean_b REAL,
+        
+        -- Color analysis - Lesion
+        lesion_mean_r REAL,
+        lesion_mean_g REAL,
+        lesion_mean_b REAL,
+        lesion_to_leaf_color_ratio_g REAL,
+        
+        -- Vegetation indices
+        exg_mean REAL,
+        ndvi_proxy_mean REAL,
+        
+        -- Shape features
+        leaf_solidity REAL,
+        leaf_circularity REAL,
+        leaf_aspect_ratio REAL,
+        
+        -- Texture features
+        damage_pct_inpaint REAL,
+        lesion_glcm_contrast REAL,
+        lesion_glcm_dissimilarity REAL,
+        
+        -- File references
+        image_path TEXT,
+        thumbnail_path TEXT,
+        json_path TEXT,
+        
+        -- Metadata
+        notes TEXT,
+        is_archived INTEGER DEFAULT 0
+    );
+    """,
+    # Indices
+    "CREATE INDEX IF NOT EXISTS idx_scan_record_timestamp ON tbl_scan_record(scan_timestamp);",
+    "CREATE INDEX IF NOT EXISTS idx_record_tree ON tbl_scan_record(tree_id);",
+    "CREATE INDEX IF NOT EXISTS idx_record_disease ON tbl_scan_record(disease_id);",
+    "CREATE INDEX IF NOT EXISTS idx_record_severity ON tbl_scan_record(severity_level_id);",
+    # Performance indexes for common WHERE clauses (added 2025-11-22)
+    "CREATE INDEX IF NOT EXISTS idx_scan_archived ON tbl_scan_record(is_archived);",
+    "CREATE INDEX IF NOT EXISTS idx_scan_tree_archived ON tbl_scan_record(tree_id, is_archived);",
+    "CREATE INDEX IF NOT EXISTS idx_scan_archived_timestamp ON tbl_scan_record(is_archived, scan_timestamp DESC);",
+    "CREATE INDEX IF NOT EXISTS idx_tree_name ON tbl_tree(name);",
+]
+
+
+# ---------- Connection Pooling ---------- #
+
+class ConnectionPool:
+    """Simple connection pool for SQLite to reuse connections across queries."""
+    def __init__(self, max_connections: int = 5):
+        self.max_connections = max_connections
+        self.pool: List[sqlite3.Connection] = []
+        self.lock = threading.Lock()
+        self.in_use: Dict[int, sqlite3.Connection] = {}
     
-    # def __del__(self):
-        # ""Destructor - ensure cleanup"""
-        # self.cleanup()
+    def get_connection(self) -> sqlite3.Connection:
+        """Get a connection from pool or create new one."""
+        with self.lock:
+            if self.pool:
+                conn = self.pool.pop()
+            else:
+                conn = sqlite3.connect(_DB_PATH, check_same_thread=False)
+                with closing(conn.cursor()) as cur:
+                    for stmt in PRAGMAS:
+                        cur.execute(stmt)
+            self.in_use[id(conn)] = conn
+            return conn
+    
+    def return_connection(self, conn: sqlite3.Connection) -> None:
+        """Return connection to pool."""
+        with self.lock:
+            conn_id = id(conn)
+            if conn_id in self.in_use:
+                del self.in_use[conn_id]
+            if len(self.pool) < self.max_connections:
+                self.pool.append(conn)
+            else:
+                conn.close()
+    
+    def close_all(self) -> None:
+        """Close all pooled connections."""
+        with self.lock:
+            for conn in self.pool:
+                conn.close()
+            for conn in self.in_use.values():
+                conn.close()
+            self.pool.clear()
+            self.in_use.clear()
+
+# Global connection pool
+_connection_pool = ConnectionPool(max_connections=5)
+
+def get_connection() -> sqlite3.Connection:
+    """Get a connection from the pool."""
+    return _connection_pool.get_connection()
+
+def return_connection(conn: sqlite3.Connection) -> None:
+    """Return a connection to the pool."""
+    _connection_pool.return_connection(conn)
+
+# ---------- Result Caching ---------- #
+
+class CacheEntry:
+    def __init__(self, value: Any, ttl: float):
+        self.value = value
+        self.expires_at = time.time() + ttl
+    
+    def is_expired(self) -> bool:
+        return time.time() > self.expires_at
+
+class ResultCache:
+    """Simple TTL-based cache for database query results."""
+    def __init__(self):
+        self.cache: Dict[str, CacheEntry] = {}
+        self.lock = threading.Lock()
+    
+    def get(self, key: str) -> Optional[Any]:
+        with self.lock:
+            entry = self.cache.get(key)
+            if entry and not entry.is_expired():
+                return entry.value
+            elif entry:
+                del self.cache[key]
+            return None
+    
+    def set(self, key: str, value: Any, ttl: float = 60.0) -> None:
+        with self.lock:
+            self.cache[key] = CacheEntry(value, ttl)
+    
+    def invalidate(self, pattern: Optional[str] = None) -> None:
+        """Invalidate cache entries matching pattern (or all if None)."""
+        with self.lock:
+            if pattern is None:
+                self.cache.clear()
+            else:
+                keys_to_delete = [k for k in self.cache.keys() if pattern in k]
+                for k in keys_to_delete:
+                    del self.cache[k]
+
+# Global result cache
+_result_cache = ResultCache()
+
+def cached_query(cache_key: str, ttl: float = 60.0):
+    """Decorator to cache query results with TTL."""
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            # Build cache key from function name and args
+            full_key = f"{cache_key}:{args}:{kwargs}"
+            
+            # Check cache
+            result = _result_cache.get(full_key)
+            if result is not None:
+                return result
+            
+            # Execute query
+            result = func(*args, **kwargs)
+            
+            # Cache result
+            _result_cache.set(full_key, result, ttl)
+            return result
+        return wrapper
+    return decorator
+
+def invalidate_cache(pattern: Optional[str] = None) -> None:
+    """Invalidate cached results."""
+    _result_cache.invalidate(pattern)
+
+# ---------- Async Query Infrastructure ---------- #
+
+def async_query(callback: Optional[Callable] = None):
+    """Decorator to execute database queries in background thread.
+    
+    Args:
+        callback: Optional function to call with result on UI thread.
+                 If provided, wrapper returns None immediately.
+                 If not provided, wrapper executes synchronously (fallback).
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if callback is None:
+                # Synchronous execution (backward compatibility)
+                return func(*args, **kwargs)
+            
+            def background_task():
+                try:
+                    result = func(*args, **kwargs)
+                    # Schedule callback on UI thread
+                    Clock.schedule_once(lambda dt: callback(result), 0)
+                except Exception as e:
+                    # Schedule error callback on UI thread
+                    Clock.schedule_once(lambda dt: callback(None, error=str(e)), 0)
+            
+            # Start background thread
+            thread = threading.Thread(target=background_task, daemon=True)
+            thread.start()
+            return None  # Return immediately
+        
+        return wrapper
+    return decorator
+
+
+def init_db() -> None:
+    """Initialize database schema (idempotent)."""
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            for stmt in SCHEMA_STATEMENTS:
+                cur.executescript(stmt) if stmt.strip().startswith("CREATE TABLE") else cur.execute(stmt)
+        conn.commit()
+    finally:
+        return_connection(conn)
+
+    # Perform any post-initialization upgrades (cascade / notes column)
+    ensure_schema_upgrades()
+
+def ensure_schema_upgrades() -> None:
+    """Apply non-destructive schema upgrades:
+    - Add notes column if missing
+    - Migrate tbl_scan_record to ON DELETE CASCADE for tree_id if older RESTRICT definition present.
+    """
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            # Check columns in tbl_scan_record
+            cur.execute("PRAGMA table_info(tbl_scan_record);")
+            cols = {row[1] for row in cur.fetchall()}
+            
+            # Add missing columns
+            if "notes" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN notes TEXT;")
+                except sqlite3.OperationalError:
+                    pass
+            if "thumbnail_path" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN thumbnail_path TEXT;")
+                except sqlite3.OperationalError:
+                    pass
+            if "confidence_score" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN confidence_score REAL;")
+                except sqlite3.OperationalError:
+                    pass
+            if "total_leaf_area" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN total_leaf_area REAL;")
+                except sqlite3.OperationalError:
+                    pass
+            if "lesion_area" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN lesion_area REAL;")
+                except sqlite3.OperationalError:
+                    pass
+            
+            # Check columns in tbl_tree
+            cur.execute("PRAGMA table_info(tbl_tree);")
+            tree_cols = {row[1] for row in cur.fetchall()}
+            if "location" not in tree_cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_tree ADD COLUMN location TEXT;")
+                except sqlite3.OperationalError:
+                    pass
+            if "variety" not in tree_cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_tree ADD COLUMN variety TEXT;")
+                except sqlite3.OperationalError:
+                    pass
+
+            # Check foreign key behavior for tree_id
+            cur.execute("PRAGMA foreign_key_list(tbl_scan_record);")
+            fk_rows = cur.fetchall()
+            needs_migration = False
+            for fk in fk_rows:
+                if fk[2] == "tbl_tree" and fk[6].upper() == "RESTRICT":
+                    needs_migration = True
+                    break
+
+            if needs_migration:
+                # Rename old table
+                cur.execute("ALTER TABLE tbl_scan_record RENAME TO _tbl_scan_record_old;")
+                # Create new table with correct schema including new columns
+                cur.executescript(
+                    """
+                    CREATE TABLE tbl_scan_record (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        tree_id INTEGER REFERENCES tbl_tree(id) ON DELETE CASCADE,
+                        disease_id INTEGER REFERENCES tbl_disease(id) ON DELETE SET NULL,
+                        severity_level_id INTEGER REFERENCES tbl_severity_level(id) ON DELETE SET NULL,
+                        severity_percentage REAL,
+                        confidence_score REAL,
+                        total_leaf_area REAL,
+                        lesion_area REAL,
+                        image_path TEXT,
+                        thumbnail_path TEXT,
+                        notes TEXT,
+                        scan_timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+                        is_archived INTEGER DEFAULT 0
+                    );
+                    """
+                )
+                # Recreate indices
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_scan_record_timestamp ON tbl_scan_record(scan_timestamp);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_record_tree ON tbl_scan_record(tree_id);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_record_disease ON tbl_scan_record(disease_id);")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_record_severity ON tbl_scan_record(severity_level_id);")
+                # Copy data with default NULL for new columns
+                try:
+                    cur.execute("INSERT INTO tbl_scan_record(id, tree_id, disease_id, severity_level_id, severity_percentage, confidence_score, total_leaf_area, lesion_area, image_path, thumbnail_path, notes, scan_timestamp, is_archived) SELECT id, tree_id, disease_id, severity_level_id, severity_percentage, NULL, NULL, NULL, image_path, thumbnail_path, notes, scan_timestamp, is_archived FROM _tbl_scan_record_old;")
+                except sqlite3.OperationalError:
+                    cur.execute("INSERT INTO tbl_scan_record(id, tree_id, disease_id, severity_level_id, severity_percentage, confidence_score, total_leaf_area, lesion_area, image_path, thumbnail_path, scan_timestamp, is_archived) SELECT id, tree_id, disease_id, severity_level_id, severity_percentage, NULL, NULL, NULL, image_path, NULL, scan_timestamp, is_archived FROM _tbl_scan_record_old;")
+                cur.execute("DROP TABLE _tbl_scan_record_old;")
+        conn.commit()
+    finally:
+        return_connection(conn)
+
+# ---------- CRUD Helpers ---------- #
+
+def insert_tree(name: str, location: Optional[str] = None, variety: Optional[str] = None) -> int:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("INSERT OR IGNORE INTO tbl_tree(name, location, variety) VALUES (?, ?, ?)", (name, location, variety))
+            conn.commit()
+            # Return id (fetch existing if IGNORE triggered)
+            cur.execute("SELECT id FROM tbl_tree WHERE name=?", (name,))
+            row = cur.fetchone()
+            # Invalidate tree-related caches
+            invalidate_cache('list_trees')
+            invalidate_cache('get_all_tree_names')
+            return int(row[0]) if row else -1
+    finally:
+        return_connection(conn)
+
+
+def insert_disease(name: str, description: str = "", symptoms: str = "", prevention: str = "") -> int:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute(
+                "INSERT OR IGNORE INTO tbl_disease(name, description, symptoms, prevention) VALUES (?,?,?,?)",
+                (name, description, symptoms, prevention)
+            )
+            conn.commit()
+            cur.execute("SELECT id FROM tbl_disease WHERE name=?", (name,))
+            row = cur.fetchone()
+            # Invalidate disease cache
+            invalidate_cache('list_diseases')
+            return int(row[0]) if row else -1
+    finally:
+        return_connection(conn)
+
+
+def insert_severity_level(name: str, description: str = "") -> int:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute(
+                "INSERT OR IGNORE INTO tbl_severity_level(name, description) VALUES (?,?)",
+                (name, description)
+            )
+            conn.commit()
+            cur.execute("SELECT id FROM tbl_severity_level WHERE name=?", (name,))
+            row = cur.fetchone()
+            return int(row[0]) if row else -1
+    finally:
+        return_connection(conn)
+
+
+def insert_scan_record(tree_id: int, disease_id: Optional[int], severity_level_id: Optional[int],
+                        severity_percentage: float, image_path: str, thumbnail_path: Optional[str] = None,
+                        notes: Optional[str] = None, confidence_score: Optional[float] = None,
+                        total_leaf_area: Optional[float] = None, lesion_area: Optional[float] = None) -> int:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute(
+                """
+                INSERT INTO tbl_scan_record(tree_id, disease_id, severity_level_id, severity_percentage, 
+                                             confidence_score, total_leaf_area, lesion_area,
+                                             image_path, thumbnail_path, notes)
+                VALUES (?,?,?,?,?,?,?,?,?,?)
+                """,
+                (tree_id, disease_id, severity_level_id, severity_percentage, 
+                 confidence_score, total_leaf_area, lesion_area,
+                 image_path, thumbnail_path, notes)
+            )
+            conn.commit()
+            # Invalidate scan count caches
+            invalidate_cache('get_all_tree_scan_counts')
+            invalidate_cache('count_scans_for_tree')
+            invalidate_cache('count_unassigned_scans')
+            return int(cur.lastrowid)
+    finally:
+        return_connection(conn)
+
+
+def get_recent_scans(limit: int = 50) -> List[Dict[str, Any]]:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute(
+                """
+                  SELECT r.id, r.scan_timestamp, r.severity_percentage, r.image_path, r.thumbnail_path,
+                       d.name AS disease_name, s.name AS severity_name, t.name AS tree_name
+                FROM tbl_scan_record r
+                LEFT JOIN tbl_disease d ON r.disease_id = d.id
+                LEFT JOIN tbl_severity_level s ON r.severity_level_id = s.id
+                LEFT JOIN tbl_tree t ON r.tree_id = t.id
+                WHERE r.is_archived = 0
+                ORDER BY r.scan_timestamp DESC
+                LIMIT ?
+                """,
+                (limit,)
+            )
+            rows = cur.fetchall()
+            result: List[Dict[str, Any]] = []
+            for row in rows:
+                result.append({
+                    "id": row[0],
+                    "scan_timestamp": row[1],
+                    "severity_percentage": row[2],
+                    "image_path": row[3],
+                    "thumbnail_path": row[4],
+                    "disease_name": row[5],
+                    "severity_name": row[6],
+                    "tree_name": row[7],
+                })
+            return result
+    finally:
+        return_connection(conn)
+
+
+def archive_scan(scan_id: int) -> None:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("UPDATE tbl_scan_record SET is_archived=1 WHERE id=?", (scan_id,))
+            conn.commit()
+            # Invalidate scan count caches
+            invalidate_cache('get_all_tree_scan_counts')
+            invalidate_cache('count_scans_for_tree')
+    finally:
+        return_connection(conn)
+
+# ---------- New Helper APIs (Trees & Scans) ---------- #
+
+@cached_query(cache_key='list_trees', ttl=60.0)
+def list_trees() -> List[Dict[str, Any]]:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("SELECT id, name, created_at FROM tbl_tree ORDER BY created_at DESC;")
+            rows = cur.fetchall()
+            return [{"id": r[0], "name": r[1], "created_at": r[2]} for r in rows]
+    finally:
+        return_connection(conn)
+
+@cached_query(cache_key='get_all_tree_names', ttl=60.0)
+def get_all_tree_names() -> List[str]:
+    """Get list of all tree names for uniqueness validation.
+    
+    Returns:
+        List of tree names
+    """
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("SELECT name FROM tbl_tree ORDER BY name;")
+            rows = cur.fetchall()
+            return [r[0] for r in rows]
+    finally:
+        return_connection(conn)
+
+@cached_query(cache_key='list_diseases', ttl=60.0)
+def list_diseases() -> List[Dict[str, Any]]:
+    """Fetch all diseases from the database.
+    
+    Returns:
+        List of disease dictionaries with id and name
+    """
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("SELECT id, name FROM tbl_disease ORDER BY name;")
+            rows = cur.fetchall()
+            return [{"id": r[0], "name": r[1]} for r in rows]
+    finally:
+        return_connection(conn)
+
+def get_tree_by_name(name: str) -> Optional[Dict[str, Any]]:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("SELECT id, name, created_at FROM tbl_tree WHERE name=?", (name,))
+            row = cur.fetchone()
+            return {"id": row[0], "name": row[1], "created_at": row[2]} if row else None
+    finally:
+        return_connection(conn)
+
+def update_tree_name(tree_id: int, new_name: str) -> bool:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("UPDATE tbl_tree SET name=? WHERE id=?", (new_name, tree_id))
+            conn.commit()
+            # Invalidate tree caches
+            invalidate_cache('list_trees')
+            invalidate_cache('get_all_tree_names')
+            return cur.rowcount > 0
+    finally:
+        return_connection(conn)
+
+def delete_tree(tree_id: int) -> bool:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("DELETE FROM tbl_tree WHERE id=?", (tree_id,))
+            conn.commit()
+            # Invalidate tree and scan count caches
+            invalidate_cache('list_trees')
+            invalidate_cache('get_all_tree_names')
+            invalidate_cache('get_all_tree_scan_counts')
+            invalidate_cache('count_scans_for_tree')
+            return cur.rowcount > 0
+    finally:
+        return_connection(conn)
+
+def count_scans_for_tree(tree_id: int) -> int:
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("SELECT COUNT(*) FROM tbl_scan_record WHERE tree_id=? AND is_archived=0", (tree_id,))
+            row = cur.fetchone()
+            return int(row[0]) if row else 0
+    finally:
+        return_connection(conn)
+
+
+@cached_query(cache_key='get_all_tree_scan_counts', ttl=30.0)
+def get_all_tree_scan_counts() -> Dict[int, int]:
+    """Get scan counts for all trees in a single query (optimized for bulk loading).
+    
+    Returns:
+        Dict mapping tree_id -> count of scans
+    """
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("""
+                SELECT tree_id, COUNT(*) 
+                FROM tbl_scan_record 
+                WHERE is_archived=0 
+                GROUP BY tree_id
+            """)
+            rows = cur.fetchall()
+            return {row[0]: row[1] for row in rows}
+    finally:
+        return_connection(conn)
+
+@cached_query(cache_key='count_unassigned_scans', ttl=30.0)
+def count_unassigned_scans() -> int:
+    """Count scans not associated with any tree.
+    
+    Returns:
+        Number of scans with tree_id = NULL
+    """
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("SELECT COUNT(*) FROM tbl_scan_record WHERE tree_id IS NULL AND is_archived=0;")
+            row = cur.fetchone()
+            return int(row[0]) if row else 0
+    finally:
+        return_connection(conn)
+
+def get_scans_filtered(tree_id: Optional[int] = None, disease_name: Optional[str] = None, 
+                      start_date: Optional[str] = None, end_date: Optional[str] = None,
+                      limit: Optional[int] = None, offset: int = 0,
+                      order_by: str = 'scan_timestamp', order_dir: str = 'DESC') -> List[Dict[str, Any]]:
+    """Fetch scans with enhanced filtering options including date ranges and sorting.
+    
+    Args:
+        tree_id: Filter by tree (None for all trees, or pass explicit None to get unassigned)
+        disease_name: Filter by disease name
+        start_date: Start date in YYYY-MM-DD format
+        end_date: End date in YYYY-MM-DD format
+        limit: Maximum number of records to return
+        offset: Number of records to skip
+        order_by: Column to sort by ('scan_timestamp' or 'severity_percentage')
+        order_dir: Sort direction ('ASC' or 'DESC')
+    
+    Returns:
+        List of scan dictionaries
+    """
+    filters = ["r.is_archived=0"]
+    params: List[Any] = []
+    
+    if tree_id is not None:
+        filters.append("r.tree_id=?")
+        params.append(tree_id)
+    
+    if disease_name:
+        filters.append("d.name=?")
+        params.append(disease_name)
+    
+    if start_date:
+        filters.append("r.scan_timestamp >= ?")
+        params.append(start_date)
+    
+    if end_date:
+        filters.append("r.scan_timestamp <= ?")
+        params.append(end_date + " 23:59:59")
+    
+    where_clause = " WHERE " + " AND ".join(filters)
+    
+    # Validate order_by to prevent SQL injection
+    valid_order_columns = {'scan_timestamp': 'r.scan_timestamp', 'severity_percentage': 'r.severity_percentage'}
+    order_column = valid_order_columns.get(order_by, 'r.scan_timestamp')
+    order_direction = 'ASC' if order_dir.upper() == 'ASC' else 'DESC'
+    
+    limit_clause = f" LIMIT {limit} OFFSET {offset}" if limit is not None else ""
+    
+    sql = f"""
+        SELECT r.id, r.scan_timestamp, r.severity_percentage, r.image_path, r.thumbnail_path, r.notes,
+               d.name AS disease_name, s.name AS severity_name, t.name AS tree_name
+        FROM tbl_scan_record r
+        LEFT JOIN tbl_disease d ON r.disease_id = d.id
+        LEFT JOIN tbl_severity_level s ON r.severity_level_id = s.id
+        LEFT JOIN tbl_tree t ON r.tree_id = t.id
+        {where_clause}
+        ORDER BY {order_column} {order_direction}
+        {limit_clause}
+    """
+    
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute(sql, tuple(params))
+            rows = cur.fetchall()
+            result: List[Dict[str, Any]] = []
+            for row in rows:
+                result.append({
+                    "id": row[0],
+                    "scan_timestamp": row[1],
+                    "severity_percentage": row[2],
+                    "image_path": row[3],
+                    "thumbnail_path": row[4],
+                    "notes": row[5],
+                    "disease_name": row[6] or "Unknown",
+                    "severity_name": row[7] or "Unknown",
+                    "tree_name": row[8] or "Unassigned"
+                })
+            return result
+    finally:
+        return_connection(conn)
+
+def get_scans(tree_id: Optional[int] = None, window_days: Optional[int] = None, disease: Optional[str] = None, limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
+    """Fetch scans filtered by optional tree, timeframe (days), and disease name.
+    
+    Args:
+        limit: Maximum number of records to return (for pagination)
+        offset: Number of records to skip (for pagination)
+    """
+    filters = ["r.is_archived=0"]
+    params: List[Any] = []
+    if tree_id is not None:
+        filters.append("r.tree_id=?")
+        params.append(tree_id)
+    if window_days is not None:
+        filters.append("r.scan_timestamp >= datetime('now', ?)")
+        params.append(f"-{window_days} days")
+    if disease is not None:
+        filters.append("d.name=?")
+        params.append(disease)
+    where_clause = " WHERE " + " AND ".join(filters) if filters else ""
+    limit_clause = f" LIMIT {limit} OFFSET {offset}" if limit is not None else ""
+    sql = f"""
+        SELECT r.id, r.scan_timestamp, r.severity_percentage, r.image_path, r.thumbnail_path, r.notes,
+               d.name AS disease_name, s.name AS severity_name, t.name AS tree_name
+        FROM tbl_scan_record r
+        LEFT JOIN tbl_disease d ON r.disease_id = d.id
+        LEFT JOIN tbl_severity_level s ON r.severity_level_id = s.id
+        LEFT JOIN tbl_tree t ON r.tree_id = t.id
+        {where_clause}
+        ORDER BY r.scan_timestamp DESC
+        {limit_clause}
+    """
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute(sql, tuple(params))
+            rows = cur.fetchall()
+            result: List[Dict[str, Any]] = []
+            for row in rows:
+                result.append({
+                    "id": row[0],
+                    "scan_timestamp": row[1],
+                    "severity_percentage": row[2],
+                    "image_path": row[3],
+                    "thumbnail_path": row[4],
+                    "notes": row[5],
+                    "disease_name": row[6],
+                    "severity_name": row[7],
+                    "tree_name": row[8],
+                })
+            return result
+    finally:
+        return_connection(conn)
+
+
+def get_scan_detail(scan_id: int) -> Optional[Dict[str, Any]]:
+    """Get full details for a single scan record.
+    
+    Args:
+        scan_id: The scan record ID
+        
+    Returns:
+        Dictionary with all scan details including confidence score, or None if not found
+    """
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("""
+                SELECT r.id, r.scan_timestamp, r.severity_percentage, r.confidence_score,
+                       r.total_leaf_area, r.lesion_area,
+                       r.image_path, r.thumbnail_path, r.notes, 
+                       r.tree_id, r.disease_id, r.severity_level_id,
+                       d.name AS disease_name, d.description AS disease_description,
+                       d.symptoms AS disease_symptoms, d.prevention AS disease_prevention,
+                       s.name AS severity_name, s.description AS severity_description,
+                       t.name AS tree_name
+                FROM tbl_scan_record r
+                LEFT JOIN tbl_disease d ON r.disease_id = d.id
+                LEFT JOIN tbl_severity_level s ON r.severity_level_id = s.id
+                LEFT JOIN tbl_tree t ON r.tree_id = t.id
+                WHERE r.id = ?
+            """, (scan_id,))
+            row = cur.fetchone()
+            
+            if not row:
+                return None
+            
+            return {
+                "id": row[0],
+                "scan_timestamp": row[1],
+                "severity_percentage": row[2] or 0.0,
+                "confidence_score": row[3] or 85.0,  # Use stored value or placeholder
+                "total_leaf_area": row[4] or 0.0,
+                "lesion_area": row[5] or 0.0,
+                "image_path": row[6],
+                "thumbnail_path": row[7],
+                "notes": row[8],
+                "tree_id": row[9],
+                "disease_id": row[10],
+                "severity_level_id": row[11],
+                "disease_name": row[12] or "Unknown",
+                "disease_description": row[13] or "",
+                "disease_symptoms": row[14] or "",
+                "disease_prevention": row[15] or "",
+                "severity_name": row[16] or "Unknown",
+                "severity_description": row[17] or "",
+                "tree_name": row[18] or "Unknown",
+            }
+    finally:
+        return_connection(conn)
+
+
+def delete_scan_record(scan_id: int) -> bool:
+    """Delete a scan record and its associated image files.
+    
+    Args:
+        scan_id: The scan record ID to delete
+        
+    Returns:
+        True if deletion succeeded, False otherwise
+    """
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            # First, get the image paths to delete files
+            cur.execute("SELECT image_path, thumbnail_path FROM tbl_scan_record WHERE id=?", (scan_id,))
+            row = cur.fetchone()
+            
+            if row:
+                image_path, thumbnail_path = row[0], row[1]
+                
+                # Delete the database record
+                cur.execute("DELETE FROM tbl_scan_record WHERE id=?", (scan_id,))
+                conn.commit()
+                
+                # Delete associated image files
+                if image_path and os.path.exists(image_path):
+                    try:
+                        os.remove(image_path)
+                    except OSError:
+                        pass  # File may already be deleted
+                
+                if thumbnail_path and os.path.exists(thumbnail_path):
+                    try:
+                        os.remove(thumbnail_path)
+                    except OSError:
+                        pass
+                
+                return cur.rowcount > 0
+            else:
+                return False
+    finally:
+        # Invalidate scan count caches
+        invalidate_cache('get_all_tree_scan_counts')
+        invalidate_cache('count_scans_for_tree')
+        invalidate_cache('count_unassigned_scans')
+        return_connection(conn)
+
+
+def export_scan_to_json(scan_id: int) -> Optional[str]:
+    """Export a single scan record to JSON file.
+    
+    Args:
+        scan_id: The scan record ID to export
+        
+    Returns:
+        Path to the exported JSON file, or None on failure
+    """
+    import json
+    from datetime import datetime
+    
+    scan_data = get_scan_detail(scan_id)
+    
+    if not scan_data:
+        return None
+    
+    # Prepare export directory
+    export_dir = os.path.join(os.getcwd(), "exports")
+    os.makedirs(export_dir, exist_ok=True)
+    
+    # Generate filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"scan_{scan_id}_{timestamp}.json"
+    output_path = os.path.join(export_dir, filename)
+    
+    # Write JSON file
+    try:
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(scan_data, f, indent=2, ensure_ascii=False)
+        return output_path
+    except Exception:
+        return None
+
+
+def export_scans_to_csv(tree_id: Optional[int] = None) -> Optional[str]:
+    """Export scans to CSV file.
+    
+    Args:
+        tree_id: Optional tree ID to filter scans (None = all scans)
+        
+    Returns:
+        Path to the exported CSV file, or None on failure
+    """
+    import csv
+    from datetime import datetime
+    
+    scans = get_scans(tree_id=tree_id)
+    
+    if not scans:
+        return None
+    
+    # Prepare export directory
+    export_dir = os.path.join(os.getcwd(), "exports")
+    os.makedirs(export_dir, exist_ok=True)
+    
+    # Generate filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    tree_suffix = f"_tree{tree_id}" if tree_id else "_all"
+    filename = f"scans{tree_suffix}_{timestamp}.csv"
+    output_path = os.path.join(export_dir, filename)
+    
+    # Write CSV file
+    try:
+        with open(output_path, 'w', newline='', encoding='utf-8') as f:
+            fieldnames = ['id', 'scan_timestamp', 'tree_name', 'disease_name', 
+                         'severity_percentage', 'severity_name', 'image_path', 'notes']
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            
+            writer.writeheader()
+            for scan in scans:
+                writer.writerow({k: scan.get(k, '') for k in fieldnames})
+        
+        return output_path
+    except Exception:
+        return None
+
+# ---------- Convenience Lookup ---------- #
+
+def get_or_create_disease(name: str) -> int:
+    return insert_disease(name)
+
+
+def get_or_create_severity(name: str) -> int:
+    return insert_severity_level(name)
+
+# ---------- Seeding ---------- #
+
+def seed_lookups(diseases: List[Dict[str, str]], severities: List[Dict[str, str]]) -> None:
+    for d in diseases:
+        insert_disease(
+            d.get("name", ""),
+            d.get("description", ""),
+            d.get("symptoms", ""),
+            d.get("prevention", "")
+        )
+    for s in severities:
+        insert_severity_level(s.get("name", ""), s.get("description", ""))
+
+# Initialize automatically on import (can be disabled if needed)
+try:
+    init_db()
+except Exception as e:
+    # Fail silently to avoid import-time crashes; calling code can retry
+    print(f"[db] Initialization warning: {e}")

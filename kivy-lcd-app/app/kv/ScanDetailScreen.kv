@@ -1,282 +1,726 @@
+#:kivy 2.0.0
+
 <ScanDetailScreen>:
     name: 'scan_detail'
-    
+
+    # Main Background
+    canvas.before:
+        Color:
+            rgba: 248/255, 248/255, 248/255, 1
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
+    # Header Icon
     BoxLayout:
-        orientation: 'vertical'
-        padding: dp(10)
-        spacing: dp(10)
-        
-        # Header with back button
+        orientation: "horizontal"
+        size_hint: None, None
+        height: 50
+        width: self.parent.width
+        pos_hint: {"x": 0.06, "y": 0.92}
+
+        Image:
+            source: "app/assets/result.png"
+            size_hint: None, None
+            size: 35, 35
+            allow_stretch: True
+            keep_ratio: True
+            mipmap: True
+
+    # Header Label
+    BoxLayout:
+        orientation: "horizontal"
+        size_hint: None, None
+        height: 50
+        width: self.parent.width
+        pos_hint: {"x": 0.17, "y": 0.91}
+
+        Label:
+            text: "Scan Details"
+            color: 3/255, 30/255, 0/255, 1
+            font_size: 32
+            bold: True
+            valign: "middle"
+            halign: "left"
+            text_size: self.size
+
+    # Back Button
+    RoundedButton:
+        id: back_button
+        size_hint: None, None
+        size: 100, 36
+        pos_hint: {"x": 0.79, "y": 0.915}
+        on_press: root.go_back()
+
         BoxLayout:
-            size_hint_y: 0.08
-            spacing: dp(10)
-            
-            Button:
-                text: '← Back'
-                size_hint_x: 0.25
-                on_press: root.go_back()
-                background_color: 0.3, 0.3, 0.3, 1.0
-            
+            orientation: "horizontal"
+            size: back_button.size
+            pos: back_button.pos
+            spacing: 6
+            padding: [0, 0, 0, 0]
+
+            Image:
+                source: "app/assets/back.png"
+                allow_stretch: True
+                keep_ratio: True
+                size_hint: None, None
+                size: 20, 20
+                pos_hint: {"center_y": 0.5}
+                mipmap: True
+
             Label:
-                text: 'Scan Details'
-                font_size: sp(20)
+                text: "Back"
+                color: 3/255, 30/255, 0/255, 1
+                font_size: 16
                 bold: True
-                size_hint_x: 0.75
-        
-        # Scrollable content area
-        ScrollView:
-            do_scroll_x: False
-            
+                size_hint_x: None
+                width: self.texture_size[0]
+                halign: "left"
+                valign: "middle"
+                pos_hint: {"center_y": 0.5}
+
+    # ── Content Scroll Area ───────────────────────────────────────────────
+    ScrollView:
+        size_hint: 1, None
+        height: root.height * 0.88
+        pos_hint: {"center_x": 0.5, "y": 0.0}
+        do_scroll_x: False
+        do_scroll_y: True
+        scroll_type: ['bars', 'content']
+        bar_width: 8
+        bar_color: 0.5, 0.5, 0.5, 0.7
+        bar_inactive_color: 0.5, 0.5, 0.5, 0.3
+
+        BoxLayout:
+            orientation: "vertical"
+            size_hint_y: None
+            height: self.minimum_height
+            padding: [30, 20, 30, 30]
+            spacing: 16
+
+            # ── Captured Image ────────────────────────────────────────
             BoxLayout:
-                orientation: 'vertical'
-                size_hint_y: None
+                orientation: "vertical"
+                size_hint: 1, None
+                height: 400
+                padding: [10, 10, 10, 10]
+
+                canvas.before:
+                    # Shadow
+                    Color:
+                        rgba: 0, 0, 0, 0.15
+                    RoundedRectangle:
+                        pos: self.x + 2.6, self.y - 3.1
+                        size: self.size
+                        radius: [15]
+                    # Card face
+                    Color:
+                        rgba: 241/255, 241/255, 241/255, 1
+                    RoundedRectangle:
+                        pos: self.pos
+                        size: self.size
+                        radius: [15]
+
+                Image:
+                    source: root.image_path if root.image_path else ""
+                    allow_stretch: False
+                    keep_ratio: True
+
+            # ── Disease Analysis Card ─────────────────────────────────
+            BoxLayout:
+                orientation: "vertical"
+                size_hint: 1, None
                 height: self.minimum_height
-                padding: dp(5)
-                spacing: dp(15)
-                
-                # Image display
+                padding: [20, 16, 20, 16]
+                spacing: 12
+
+                canvas.before:
+                    Color:
+                        rgba: 0, 0, 0, 0.18
+                    RoundedRectangle:
+                        pos: self.x + 1, self.y - 3
+                        size: self.size
+                        radius: [12]
+                    Color:
+                        rgba: 180/255, 180/255, 180/255, 1
+                    RoundedRectangle:
+                        pos: self.x, self.y - 2
+                        size: self.size
+                        radius: [12]
+                    Color:
+                        rgba: 241/255, 241/255, 241/255, 1
+                    RoundedRectangle:
+                        pos: self.x, self.y + 2
+                        size: self.size
+                        radius: [12]
+
+                Label:
+                    text: "Disease Analysis"
+                    color: 0, 0, 0, 1
+                    font_size: 18
+                    bold: True
+                    size_hint: 1, None
+                    height: self.texture_size[1]
+                    halign: "center"
+                    valign: "middle"
+                    text_size: self.width, None
+
+                # Disease row
                 BoxLayout:
-                    orientation: 'vertical'
-                    size_hint_y: None
-                    height: dp(300)
-                    spacing: dp(5)
-                    
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 24
+
                     Label:
-                        text: 'Captured Image'
-                        font_size: sp(16)
-                        bold: True
-                        size_hint_y: 0.1
-                    
-                    AsyncImage:
-                        source: root.image_path if root.image_path else ''
-                        allow_stretch: True
-                        keep_ratio: True
-                        size_hint_y: 0.9
-                
-                # Disease information card
-                BoxLayout:
-                    orientation: 'vertical'
-                    size_hint_y: None
-                    height: dp(120)
-                    padding: dp(10)
-                    spacing: dp(5)
-                    canvas.before:
-                        Color:
-                            rgba: 0.2, 0.2, 0.25, 1.0
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [dp(10)]
-                    
-                    Label:
-                        text: 'Disease Analysis'
-                        font_size: sp(16)
-                        bold: True
-                        size_hint_y: 0.25
-                    
-                    GridLayout:
-                        cols: 2
-                        spacing: dp(10)
-                        size_hint_y: 0.75
-                        
-                        Label:
-                            text: 'Disease:'
-                            halign: 'right'
-                            size_hint_x: 0.4
-                        Label:
-                            text: root.disease_name
-                            halign: 'left'
-                            bold: True
-                            size_hint_x: 0.6
-                        
-                        Label:
-                            text: 'Confidence:'
-                            halign: 'right'
-                            size_hint_x: 0.4
-                        BoxLayout:
-                            orientation: 'horizontal'
-                            spacing: dp(5)
-                            size_hint_x: 0.6
-                            
-                            Label:
-                                text: f'{root.confidence_score:.1f}%'
-                                halign: 'left'
-                                bold: True
-                                size_hint_x: 0.4
-                            
-                            # Confidence Badge
-                            BoxLayout:
-                                size_hint_x: 0.6
-                                canvas.before:
-                                    Color:
-                                        rgba: app.get_color_from_hex(root.confidence_badge_color) if root.confidence_badge_color else (0.5, 0.5, 0.5, 1)
-                                    RoundedRectangle:
-                                        pos: self.pos
-                                        size: self.size
-                                        radius: [dp(5)]
-                                
-                                Label:
-                                    text: root.confidence_badge_text
-                                    color: 1, 1, 1, 1
-                                    font_size: sp(11)
-                                    bold: True
-                                    halign: 'center'
-                                    valign: 'middle'
-                        
-                        Label:
-                            text: 'Severity:'
-                            halign: 'right'
-                            size_hint_x: 0.4
-                        Label:
-                            text: f'{root.severity_percentage:.1f}% ({root.severity_name})'
-                            halign: 'left'
-                            bold: True
-                            color: (1.0, 0.75, 0.0, 1.0) if root.severity_percentage >= 30 else (0.2, 0.7, 0.3, 1.0)
-                            size_hint_x: 0.6
-                
-                # Leaf metrics card
-                BoxLayout:
-                    orientation: 'vertical'
-                    size_hint_y: None
-                    height: dp(120)
-                    padding: dp(10)
-                    spacing: dp(5)
-                    canvas.before:
-                        Color:
-                            rgba: 0.2, 0.25, 0.2, 1.0
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [dp(10)]
-                    
-                    Label:
-                        text: 'Leaf Metrics'
-                        font_size: sp(16)
-                        bold: True
-                        size_hint_y: 0.25
-                    
-                    GridLayout:
-                        cols: 2
-                        spacing: dp(10)
-                        size_hint_y: 0.75
-                        
-                        Label:
-                            text: 'Total Leaf Area:'
-                            halign: 'right'
-                            size_hint_x: 0.5
-                        Label:
-                            text: f'{root.total_leaf_area:.0f} px²'
-                            halign: 'left'
-                            size_hint_x: 0.5
-                        
-                        Label:
-                            text: 'Lesion Area:'
-                            halign: 'right'
-                            size_hint_x: 0.5
-                        Label:
-                            text: f'{root.lesion_area:.0f} px²'
-                            halign: 'left'
-                            size_hint_x: 0.5
-                        
-                        Label:
-                            text: 'Lesion Coverage:'
-                            halign: 'right'
-                            size_hint_x: 0.5
-                        Label:
-                            text: f'{root.lesion_coverage:.1f}%'
-                            halign: 'left'
-                            bold: True
-                            size_hint_x: 0.5
-                
-                # Scan metadata card
-                BoxLayout:
-                    orientation: 'vertical'
-                    size_hint_y: None
-                    height: dp(100)
-                    padding: dp(10)
-                    spacing: dp(5)
-                    canvas.before:
-                        Color:
-                            rgba: 0.25, 0.2, 0.2, 1.0
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [dp(10)]
-                    
-                    Label:
-                        text: 'Scan Information'
-                        font_size: sp(16)
-                        bold: True
-                        size_hint_y: 0.3
-                    
-                    GridLayout:
-                        cols: 2
-                        spacing: dp(10)
-                        size_hint_y: 0.7
-                        
-                        Label:
-                            text: 'Tree:'
-                            halign: 'right'
-                            size_hint_x: 0.4
-                        Label:
-                            text: root.tree_name
-                            halign: 'left'
-                            size_hint_x: 0.6
-                        
-                        Label:
-                            text: 'Date:'
-                            halign: 'right'
-                            size_hint_x: 0.4
-                        Label:
-                            text: root.formatted_timestamp
-                            halign: 'left'
-                            size_hint_x: 0.6
-                
-                # Notes section (if present)
-                BoxLayout:
-                    orientation: 'vertical'
-                    size_hint_y: None
-                    height: dp(80) if root.notes else 0
-                    opacity: 1 if root.notes else 0
-                    padding: dp(10)
-                    spacing: dp(5)
-                    canvas.before:
-                        Color:
-                            rgba: 0.2, 0.2, 0.2, 1.0
-                        RoundedRectangle:
-                            pos: self.pos
-                            size: self.size
-                            radius: [dp(10)]
-                    
-                    Label:
-                        text: 'Notes'
-                        font_size: sp(16)
-                        bold: True
-                        size_hint_y: 0.3
-                    
-                    Label:
-                        text: root.notes
-                        halign: 'left'
-                        valign: 'top'
+                        text: "Disease:"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        halign: "left"
+                        valign: "middle"
                         text_size: self.size
-                        size_hint_y: 0.7
-                
-                # Action buttons
+                        size_hint_x: 0.45
+
+                    Label:
+                        text: root.disease_name
+                        color: 3/255, 30/255, 0/255, 1
+                        font_size: 15
+                        bold: True
+                        halign: "right"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.55
+
+                # Confidence row
                 BoxLayout:
-                    orientation: 'vertical'
-                    size_hint_y: None
-                    height: dp(120)
-                    spacing: dp(10)
-                    
-                    Button:
-                        text: 'Export Data'
-                        size_hint_y: 0.5
-                        background_color: 0.2, 0.5, 0.8, 1.0
-                        on_press: root.export_data()
-                    
-                    Button:
-                        text: 'Delete Scan'
-                        size_hint_y: 0.5
-                        background_color: 0.8, 0.2, 0.2, 1.0
-                        disabled: not root.delete_enabled
-                        on_press: root.confirm_delete()
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 28
+
+                    Label:
+                        text: "Confidence:"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.45
+
+                    BoxLayout:
+                        size_hint: None, None
+                        size: 130, 26
+                        pos_hint: {"right": 1}
+
+                        canvas.before:
+                            Color:
+                                rgba: (201/255, 255/255, 142/255, 1) if root.confidence_badge_text == 'Healthy' else (255/255, 246/255, 149/255, 1) if root.confidence_badge_text == 'Early' else (255/255, 180/255, 168/255, 1)
+                            RoundedRectangle:
+                                pos: self.pos
+                                size: self.size
+                                radius: [6]
+
+                        Label:
+                            text: root.confidence_badge_text
+                            color: (0/255, 82/255, 0/255, 1) if root.confidence_badge_text == 'Healthy' else (99/255, 91/255, 1/255, 1) if root.confidence_badge_text == 'Early' else (150/255, 22/255, 3/255, 1)
+                            font_size: 13
+                            bold: True
+                            halign: "center"
+                            valign: "middle"
+                            text_size: self.size
+
+                # Severity row
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 24
+
+                    Label:
+                        text: "Severity:"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.45
+
+                    Label:
+                        text: str(root.severity_percentage) + "% (" + root.severity_name + ")"
+                        color: (38/255, 164/255, 33/255, 1) if root.severity_name.lower() == 'healthy' else (207/255, 191/255, 44/255, 1) if root.severity_name.lower() == 'moderate' else (221/255, 45/255, 29/255, 1)
+                        font_size: 15
+                        bold: True
+                        halign: "right"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.55
+
+            # ── Leaf Metrics Card ─────────────────────────────────────
+            BoxLayout:
+                orientation: "vertical"
+                size_hint: 1, None
+                height: self.minimum_height
+                padding: [20, 16, 20, 16]
+                spacing: 12
+
+                canvas.before:
+                    Color:
+                        rgba: 0, 0, 0, 0.18
+                    RoundedRectangle:
+                        pos: self.x + 1, self.y - 3
+                        size: self.size
+                        radius: [12]
+                    Color:
+                        rgba: 180/255, 180/255, 180/255, 1
+                    RoundedRectangle:
+                        pos: self.x, self.y - 2
+                        size: self.size
+                        radius: [12]
+                    Color:
+                        rgba: 241/255, 241/255, 241/255, 1
+                    RoundedRectangle:
+                        pos: self.x, self.y + 2
+                        size: self.size
+                        radius: [12]
+
+                Label:
+                    text: "Leaf Metrics"
+                    color: 0, 0, 0, 1
+                    font_size: 18
+                    bold: True
+                    size_hint: 1, None
+                    height: self.texture_size[1]
+                    halign: "center"
+                    valign: "middle"
+                    text_size: self.width, None
+
+                # Total Leaf Area row
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 24
+
+                    Label:
+                        text: "Total Leaf Area:"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.55
+
+                    Label:
+                        text: str(int(root.total_leaf_area)) + " px\u00b2"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        bold: True
+                        halign: "right"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.45
+
+                # Lesion Area row
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 24
+
+                    Label:
+                        text: "Lesion Area:"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.55
+
+                    Label:
+                        text: str(int(root.lesion_area)) + " px\u00b2"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        bold: True
+                        halign: "right"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.45
+
+                # Lesion Coverage row
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 24
+
+                    Label:
+                        text: "Lesion Coverage:"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.55
+
+                    Label:
+                        text: str(root.lesion_coverage) + "%"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        bold: True
+                        halign: "right"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.45
+
+            # ── Scan Information Card ─────────────────────────────────
+            BoxLayout:
+                orientation: "vertical"
+                size_hint: 1, None
+                height: self.minimum_height
+                padding: [20, 16, 20, 16]
+                spacing: 12
+
+                canvas.before:
+                    Color:
+                        rgba: 0, 0, 0, 0.18
+                    RoundedRectangle:
+                        pos: self.x + 1, self.y - 3
+                        size: self.size
+                        radius: [12]
+                    Color:
+                        rgba: 180/255, 180/255, 180/255, 1
+                    RoundedRectangle:
+                        pos: self.x, self.y - 2
+                        size: self.size
+                        radius: [12]
+                    Color:
+                        rgba: 241/255, 241/255, 241/255, 1
+                    RoundedRectangle:
+                        pos: self.x, self.y + 2
+                        size: self.size
+                        radius: [12]
+
+                Label:
+                    text: "Scan Information"
+                    color: 0, 0, 0, 1
+                    font_size: 18
+                    bold: True
+                    size_hint: 1, None
+                    height: self.texture_size[1]
+                    halign: "center"
+                    valign: "middle"
+                    text_size: self.width, None
+
+                # Tree row
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 24
+
+                    Label:
+                        text: "Tree:"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.45
+
+                    Label:
+                        text: root.tree_name
+                        color: 3/255, 30/255, 0/255, 1
+                        font_size: 15
+                        bold: True
+                        halign: "right"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.55
+
+                # Scan Date row
+                BoxLayout:
+                    orientation: "horizontal"
+                    size_hint: 1, None
+                    height: 24
+
+                    Label:
+                        text: "Scan Date:"
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        halign: "left"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.45
+
+                    Label:
+                        text: root.formatted_timestamp
+                        color: 0, 0, 0, 1
+                        font_size: 15
+                        halign: "right"
+                        valign: "middle"
+                        text_size: self.size
+                        size_hint_x: 0.55
+
+            # ── Action Buttons ────────────────────────────────────────
+            BoxLayout:
+                orientation: "horizontal"
+                size_hint: 1, None
+                height: 49
+                spacing: 14
+                padding: [0, 0, 0, 0]
+
+                # Export Data — green, same style as Add New Tree + icon
+                Button:
+                    id: export_data_btn
+                    text: ""
+                    size_hint: 1, None
+                    height: 49
+                    font_size: 16
+                    bold: True
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    color: 1, 1, 1, 1
+                    on_press: root.export_data()
+
+                    canvas.before:
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.22)
+                        RoundedRectangle:
+                            pos: self.x + 1, self.y - 3
+                            size: self.size
+                            radius: [11]
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0/255, 100/255, 0/255, 1)
+                        RoundedRectangle:
+                            pos: self.x, self.y - 2
+                            size: self.size
+                            radius: [11]
+                        Color:
+                            rgba: (0/255, 110/255, 0/255, 1) if self.state == 'down' else (0/255, 152/255, 0/255, 1)
+                        RoundedRectangle:
+                            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                            size: self.size
+                            radius: [11]
+
+                    BoxLayout:
+                        orientation: "horizontal"
+                        size: export_data_btn.size
+                        pos: export_data_btn.pos
+                        spacing: 8
+                        padding: [0, 0, 0, 0]
+
+                        Widget:
+                            size_hint_x: 1
+
+                        Image:
+                            source: "app/assets/export_white.png"
+                            size_hint: None, None
+                            size: 22, 22
+                            allow_stretch: True
+                            keep_ratio: True
+                            mipmap: True
+                            pos_hint: {"center_y": 0.5}
+
+                        Label:
+                            text: "Export Data"
+                            color: 1, 1, 1, 1
+                            font_size: 16
+                            bold: True
+                            size_hint: None, None
+                            size: 100, export_data_btn.height
+                            halign: "left"
+                            valign: "middle"
+                            text_size: None, None
+
+                        Widget:
+                            size_hint_x: 1
+
+                # Delete Scan — red, same style + icon
+                Button:
+                    id: delete_scan_btn
+                    text: ""
+                    size_hint: 1, None
+                    height: 49
+                    font_size: 16
+                    bold: True
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    color: 1, 1, 1, 1
+                    disabled: not root.delete_enabled
+                    on_press: root.confirm_delete()
+
+                    canvas.before:
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.22)
+                        RoundedRectangle:
+                            pos: self.x + 1, self.y - 3
+                            size: self.size
+                            radius: [11]
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (160/255, 30/255, 45/255, 1)
+                        RoundedRectangle:
+                            pos: self.x, self.y - 2
+                            size: self.size
+                            radius: [11]
+                        Color:
+                            rgba: (160/255, 30/255, 45/255, 1) if self.state == 'down' else (220/255, 53/255, 69/255, 1)
+                        RoundedRectangle:
+                            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                            size: self.size
+                            radius: [11]
+
+                    BoxLayout:
+                        orientation: "horizontal"
+                        size: delete_scan_btn.size
+                        pos: delete_scan_btn.pos
+                        spacing: 8
+                        padding: [0, 0, 0, 0]
+
+                        Widget:
+                            size_hint_x: 1
+
+                        Image:
+                            source: "app/assets/delete_scan.png"
+                            size_hint: None, None
+                            size: 22, 22
+                            allow_stretch: True
+                            keep_ratio: True
+                            mipmap: True
+                            pos_hint: {"center_y": 0.5}
+
+                        Label:
+                            text: "Delete Scan"
+                            color: 1, 1, 1, 1
+                            font_size: 16
+                            bold: True
+                            size_hint: None, None
+                            size: 105, delete_scan_btn.height
+                            halign: "left"
+                            valign: "middle"
+                            text_size: None, None
+
+                        Widget:
+                            size_hint_x: 1
+
+
+
+
+# ── Confirm Delete Modal ───────────────────────────────────────────────────────
+<ConfirmDeleteModal>:
+    size_hint: None, None
+    size: 480, 800
+    auto_dismiss: False
+    background: ""
+    background_color: 0, 0, 0, 0
+    overlay_color: 0, 0, 0, 0.5
+
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: 0, 0, 0, 0.5
+            Rectangle:
+                pos: root.pos
+                size: root.size
+
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint: None, None
+            size: 300, 170
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            padding: [18, 18, 18, 18]
+            spacing: 12
+
+            canvas.before:
+                Color:
+                    rgba: 0, 0, 0, 0.25
+                RoundedRectangle:
+                    radius: [16]
+                    pos: self.x + 2, self.y - 4
+                    size: self.size
+                Color:
+                    rgba: 1, 1, 1, 1
+                RoundedRectangle:
+                    radius: [16]
+                    pos: self.pos
+                    size: self.size
+
+            Label:
+                text: "Delete Scan?"
+                color: 3/255, 33/255, 0/255, 1
+                font_size: 20
+                bold: True
+                size_hint_y: None
+                height: 26
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+
+            Label:
+                text: root.detail_text
+                color: 49/255, 49/255, 49/255, 1
+                font_size: 13
+                bold: True
+                size_hint_y: None
+                height: 40
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 34
+                spacing: 8
+
+                # Cancel — gray 3-layer shadow, matching SaveSuccessModal
+                Button:
+                    text: "Cancel"
+                    size_hint_x: 0.5
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    color: (0/255, 36/255, 0/255, 1) if self.state == 'down' else (0/255, 56/255, 0/255, 1)
+                    font_size: 14
+                    bold: True
+                    on_press: root.cancel()
+                    canvas.before:
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.15)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x + 1, self.y - 3
+                            size: self.size
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (180/255, 180/255, 180/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y - 2
+                            size: self.size
+                        Color:
+                            rgba: (220/255, 220/255, 220/255, 1) if self.state == 'down' else (241/255, 241/255, 241/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                            size: self.size
+
+                # Delete — red 3-layer shadow, matching Records delete button
+                Button:
+                    text: "Delete"
+                    size_hint_x: 0.5
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    color: 1, 1, 1, 1
+                    font_size: 14
+                    bold: True
+                    on_press: root.confirm()
+                    canvas.before:
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.2)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x + 1, self.y - 3
+                            size: self.size
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (160/255, 30/255, 45/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y - 2
+                            size: self.size
+                        Color:
+                            rgba: (160/255, 30/255, 45/255, 1) if self.state == 'down' else (220/255, 53/255, 69/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                            size: self.size
