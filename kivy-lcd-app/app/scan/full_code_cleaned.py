@@ -57,11 +57,11 @@ SCANS_BASE_DIR = DATA_DIR / "scans"
 SCANS_BASE_DIR.mkdir(parents=True, exist_ok=True)
 print(f"✓ Scans directory ready: {SCANS_BASE_DIR}", file=sys.stderr)
 
-# Generate unique scan directory with timestamp
+# Generate unique scan timestamp (for later use when saving)
 SCAN_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
-SCAN_DIR = SCANS_BASE_DIR / f"scan_{SCAN_TIMESTAMP}"
-SCAN_DIR.mkdir(exist_ok=True)
-print(f"✓ Created scan directory: {SCAN_DIR}", file=sys.stderr)
+# Use script directory as working temp directory (files will be overwritten each scan)
+SCAN_DIR = SCRIPT_DIR
+print(f"✓ Using temp scan directory: {SCAN_DIR}", file=sys.stderr)
 
 # Determine Python executable for ONNX environment
 ONNX_PYTHON = os.getenv("ONNX_PYTHON_PATH", "python3")  # Default to system python3
@@ -361,7 +361,7 @@ def save_to_database():
         
         disease_class = classification.get("class", "Unknown")
         confidence = classification.get("confidence", 0.0)
-        all_preds = classification.get("all_predictions", {})
+        all_preds = classification.get("probabilities", {})
         
         # Map disease class to disease_id
         disease_map = {
@@ -521,8 +521,10 @@ def run_pipeline():
         results["timings"]["total"] = time.time() - start_time
         results["status"] = "success"
         
-        # Save to database
-        scan_id = save_to_database()
+        # Don't save to database - let user confirm via Save button
+        # Add temp directory info for later use
+        results["temp_scan_dir"] = str(SCAN_DIR)
+        results["scan_timestamp"] = SCAN_TIMESTAMP
         
         report_phase("complete", pct=100, reduced_image=CONFIG["output_reduced"])
         return True

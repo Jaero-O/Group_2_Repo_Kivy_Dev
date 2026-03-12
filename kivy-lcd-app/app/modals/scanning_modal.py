@@ -108,19 +108,26 @@ class ScanningModal(ModalView):
                 app = App.get_running_app()
 
                 reduced_image_path = results.get("reduced_image", "output_image_reduced.png")
-                scan_id = results.get("database_id")
-
-                app.current_scan_id = scan_id
+                
+                # Don't set scan_id - not saved to database yet
+                app.current_scan_id = None
+                
+                # Store complete results including temp directory info
                 app.scan_result = {
+                    "classification": results.get("classification"),
+                    "analysis": results.get("analysis"),
+                    "temp_scan_dir": results.get("temp_scan_dir"),
+                    "scan_timestamp": results.get("scan_timestamp"),
                     "label": classification.get("class", "Unknown"),
                     "confidence": classification.get("confidence", 0.0),
                     "severity_percentage": analysis.get("severity_percent", 0.0) if analysis else 0.0,
                     "severity_level": analysis.get("severity_level", "None") if analysis else "None",
                     "image_path": reduced_image_path,
-                    "scan_timestamp": results.get("timestamp", "N/A")
+                    "total_leaf_area": analysis.get("leaf_area_cm2") if analysis else None,
+                    "lesion_area": analysis.get("lesion_area_cm2") if analysis else None
                 }
 
-                print(f"Scan complete: scan_id={scan_id}, disease={classification.get('class')}, confidence={classification.get('confidence'):.2%}")
+                print(f"Scan complete: disease={classification.get('class')}, confidence={classification.get('confidence'):.2%}, temp_dir={results.get('temp_scan_dir')}")
 
                 self.image_path = reduced_image_path
                 self.status_text = "Scan complete!"
