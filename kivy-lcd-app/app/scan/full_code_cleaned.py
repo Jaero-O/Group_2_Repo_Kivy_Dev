@@ -14,6 +14,7 @@ import sys
 import time
 import json
 import sqlite3
+import threading
 import cv2
 import numpy as np
 from datetime import datetime
@@ -83,8 +84,10 @@ class ScanPipeline:
             "camera_size":      (2304, 1296),
             "target_width":     480,
             "target_height":    800,
-            "crop_top_px":  [0, 268, 0, 0],
-            "left_shifts":  [0, -21, -27, -44]
+            # ~ "crop_top_px":  [0, 268, 0, 0],
+            # ~ "left_shifts":  [0, -21, -27, -44],
+            "crop_top_px":  [0, 152, 9, 4],
+            "left_shifts":  [0, -29, -39, -56],
         }
 
         # ── GPIO ──────────────────────────────────────────────────────────────
@@ -138,6 +141,7 @@ class ScanPipeline:
         print("✓ Model server connected", file=sys.stderr)
 
         self.current_pos  = 0
+        self._run_lock    = threading.Lock()   # prevents overlapping pipeline runs
         self._initialized = True
         print("=== ScanPipeline Ready ===", file=sys.stderr)
 
@@ -154,8 +158,22 @@ class ScanPipeline:
         Returns the results dict.
         """
 
+        if not self._run_lock.acquire(blocking=False):
+            print("⚠ Pipeline already running — ignoring duplicate start", file=sys.stderr)
+            return {"status": "busy", "errors": ["Pipeline already running"]}
+
+        # ── Freeze the cancel state into a per-run Event ──────────────────────
+        # This makes cancellation immune to the caller resetting the shared flag
+        # between scans. The old run will always see its own _cancel_event, which
+        # is never reset externally.
+        _cancel_event = threading.Event()
+
         def is_cancelled():
-            return cancel_flag is not None and cancel_flag()
+            # Poll the live flag; if it fired, latch it permanently into the event.
+            # This survives the caller resetting their flag for the next scan.
+            if cancel_flag is not None and cancel_flag():
+                _cancel_event.set()
+            return _cancel_event.is_set()
 
         # Fresh scan directory per scan
         scan_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -210,7 +228,6 @@ class ScanPipeline:
                 return results
 
             # ── Home again (background) ───────────────────────────────────────
-            import threading
             home_thread = threading.Thread(target=self._home_motor_background, daemon=True)
             home_thread.start()
 
@@ -250,7 +267,7 @@ class ScanPipeline:
             # ── Analyse (skip if healthy) ─────────────────────────────────────
             if "error" not in classification and classification.get("class") != "Healthy":
                 report("analyzing", 0)
-                results["analysis"] = self._analyze(paths, results, report)
+                results["analysis"] = self._analyze(paths, results, report, scan_dir)
 
             if is_cancelled():
                 results["status"] = "cancelled"
@@ -279,6 +296,9 @@ class ScanPipeline:
             results["timings"]["total"] = time.time() - start
             report("error", 0, message=str(e))
             return results
+
+        finally:
+            self._run_lock.release()
 
     # =========================================================================
     # MOTOR
@@ -439,6 +459,16 @@ class ScanPipeline:
         return fraction >= min_area_fraction
 
     # =========================================================================
+    # ENHANCE LEAF IMAGE (applied to bg-removed image before cropping)
+    # =========================================================================
+    def _enhance_leaf(self, img: np.ndarray) -> np.ndarray:
+        """
+        Enhancement disabled — returns image as-is.
+        Re-enable individual steps here once baseline is confirmed.
+        """
+        return img
+
+    # =========================================================================
     # PROCESS LEAF IMAGE
     # =========================================================================
     def _process_leaf_image(self, paths, results, report, is_cancelled):
@@ -462,16 +492,36 @@ class ScanPipeline:
             results["status"] = "cancelled"
             return False
 
-        report("processing", 50, message="Detecting leaf...")
+        # ── Enhance image quality ─────────────────────────────────────────────
+        report("processing", 40, message="Enhancing leaf image quality...")
+        raw = cv2.imread(str(paths["bg_removed"]), cv2.IMREAD_UNCHANGED)
+        if raw is not None:
+            enhanced = self._enhance_leaf(raw)
+            cv2.imwrite(str(paths["bg_removed"]), enhanced)
+        else:
+            print("⚠ Enhancement skipped — could not read bg_removed image",
+                  file=sys.stderr)
 
-        img_cv = cv2.imread(str(paths["bg_removed"]))
-        if img_cv is None:
+        # report("processing", 50, message="Detecting leaf...")
+
+        img_raw = cv2.imread(str(paths["bg_removed"]), cv2.IMREAD_UNCHANGED)
+        if img_raw is None:
             results["errors"].append("bg_removed_unreadable")
             results["status"] = "error"
             return False
 
-        gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
-        _, leaf_mask = cv2.threshold(gray, 250, 255, cv2.THRESH_BINARY_INV)
+        # ── Build leaf mask ───────────────────────────────────────────────────
+        # Prefer alpha channel (bg-removed PNGs are RGBA — alpha=0 is transparent bg,
+        # alpha=255 is leaf). Falling back to gray threshold only if no alpha exists.
+        if img_raw.ndim == 3 and img_raw.shape[2] == 4:
+            # Use alpha channel directly — exact leaf mask, no false positives
+            leaf_mask = img_raw[:, :, 3]
+            img_cv    = img_raw[:, :, :3]  # BGR only for processing downstream
+        else:
+            img_cv = img_raw
+            gray   = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+            _, leaf_mask = cv2.threshold(gray, 10, 255, cv2.THRESH_BINARY)
+
         kernel    = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
         leaf_mask = cv2.morphologyEx(leaf_mask, cv2.MORPH_CLOSE, kernel)
         leaf_mask = cv2.morphologyEx(leaf_mask, cv2.MORPH_OPEN,  kernel)
@@ -508,7 +558,8 @@ class ScanPipeline:
         img_padded = ImageOps.pad(
             img_resized,
             (self.config["target_width"], self.config["target_height"]),
-            color="white"
+            color="white",
+            centering=(0.5, 0.5),   # explicitly center — older Pillow defaults to (0,0)
         )
         img_padded.save(str(paths["reduced"]))
 
@@ -531,14 +582,27 @@ class ScanPipeline:
     # =========================================================================
     # ANALYSE
     # =========================================================================
-    def _analyze(self, paths, results, report):
+    def _analyze(self, paths, results, report, scan_dir):
         try:
             leaf_id = int(datetime.now().timestamp())
+
+            # ── FIX #10 + #11: pass scan_dir and the alpha mask ───────────────
+            # Load the bg-removed PNG to extract the alpha channel as leaf mask.
+            # This is passed into analyze_leaf() so it skips HSV green segmentation
+            # (which misses brown/diseased areas) and uses the accurate bg-removal
+            # silhouette instead.
+            leaf_mask_override = None
+            bg_removed = cv2.imread(str(paths["bg_removed"]), cv2.IMREAD_UNCHANGED)
+            if bg_removed is not None and bg_removed.ndim == 3 and bg_removed.shape[2] == 4:
+                leaf_mask_override = bg_removed[:, :, 3]
+
             record, _ = analyze_leaf(
                 str(paths["input_image"]),
                 leaf_id=leaf_id,
                 save_to_csv=True,
-                save_json=True
+                save_json=True,
+                scan_dir=paths["scan_dir"],          # fix #6: save to scan folder
+                leaf_mask_input=leaf_mask_override,  # fix #2/#11: use alpha silhouette
             )
             report("analyzing", 100)
             return record
@@ -569,8 +633,8 @@ class ScanPipeline:
             }
             disease_id = disease_map.get(disease_class)
 
-            severity_pct   = analysis.get("severity_percent", 0.0)
-            severity_level = analysis.get("severity_level", "None")
+            severity_pct   = analysis.get("severity_percent", 0.0)  # FIX #1: was "severity_percent" mismatch
+            severity_level = analysis.get("severity_level",   "None") # FIX #5: now populated by analyze_leaf
             severity_map   = {"None": None, "Low": 1, "Moderate": 2, "High": 3}
             severity_id    = severity_map.get(severity_level)
 
@@ -604,11 +668,13 @@ class ScanPipeline:
                     leaf_mean_r, leaf_mean_g, leaf_mean_b,
                     lesion_mean_r, lesion_mean_g, lesion_mean_b,
                     lesion_to_leaf_color_ratio_g,
-                    exg_mean, ndvi_proxy_mean,
+                    exg_mean, grvi_mean,
                     leaf_solidity, leaf_circularity, leaf_aspect_ratio,
-                    damage_pct_inpaint, lesion_glcm_contrast, lesion_glcm_dissimilarity,
+                    damage_pct_inpaint,
+                    lesion_glcm_contrast, lesion_glcm_dissimilarity,
+                    lesion_glcm_energy, lesion_glcm_homogeneity, lesion_glcm_correlation,
                     image_path, thumbnail_path, json_path, notes
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 None, disease_id, severity_id,
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -634,13 +700,16 @@ class ScanPipeline:
                 analysis.get("lesion_mean_b", 0.0),
                 analysis.get("lesion_to_leaf_color_ratio_g", 0.0),
                 analysis.get("exg_mean",            0.0),
-                analysis.get("ndvi_proxy_mean",     0.0),
+                analysis.get("grvi_mean",           0.0),  # was ndvi_proxy_mean
                 analysis.get("leaf_solidity",       0.0),
                 analysis.get("leaf_circularity",    0.0),
                 analysis.get("leaf_aspect_ratio",   0.0),
                 analysis.get("damage_pct_inpaint",  0.0),
                 analysis.get("lesion_glcm_contrast",      0.0),
                 analysis.get("lesion_glcm_dissimilarity", 0.0),
+                analysis.get("lesion_glcm_energy",        0.0),  # new
+                analysis.get("lesion_glcm_homogeneity",   0.0),  # new
+                analysis.get("lesion_glcm_correlation",   0.0),  # new
                 image_path, thumbnail_path, json_path, notes
             ))
             conn.commit()
