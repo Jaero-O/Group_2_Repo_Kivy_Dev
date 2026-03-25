@@ -1,5 +1,7 @@
 """Save Modal - opened as a ModalView from CaptureResultScreen."""
 import os
+import shutil
+from pathlib import Path
 from kivy.uix.modalview import ModalView
 from kivy.properties import (
     ObjectProperty, StringProperty, NumericProperty, BooleanProperty
@@ -249,24 +251,107 @@ class SaveModal(ModalView):
         )
 
     def _persist_scan(self):
+        """Copy files from temp to permanent storage and save to database."""
         from app.core.db import insert_scan_record, get_or_create_disease, get_or_create_severity
         from app.core.image_thumb import generate_thumbnail
 
         if not getattr(self, 'selected_tree_id', None):
+            print("[SaveModal] Error: No tree selected")
             return
-
-        disease_id = get_or_create_disease(self.prediction_label) if self.prediction_label else None
-        severity_id = get_or_create_severity(self.severity_level) if self.severity_level else None
-        thumb_path = generate_thumbnail(self.image_path)
 
         app = App.get_running_app()
         scan_result = getattr(app, 'scan_result', {}) or {}
-
+        
+        # Get temp directory and timestamp from scan_result
+        temp_scan_dir = scan_result.get("temp_scan_dir", "")
+        scan_timestamp = scan_result.get("scan_timestamp", "")
+        
+        if not temp_scan_dir or not scan_timestamp:
+            print(f"[SaveModal] Error: Missing temp info - dir:{temp_scan_dir}, ts:{scan_timestamp}")
+            # Fall back to old behavior if temp info not available
+            disease_id = get_or_create_disease(self.prediction_label) if self.prediction_label else None
+            severity_id = get_or_create_severity(self.severity_level) if self.severity_level else None
+            thumb_path = generate_thumbnail(self.image_path)
+            
+            scan_id = insert_scan_record(
+                self.selected_tree_id, disease_id, severity_id,
+                self.severity_percentage, self.image_path, thumb_path, None,
+                confidence_score=scan_result.get('confidence'),
+                total_leaf_area=scan_result.get('total_leaf_area'),
+                lesion_area=scan_result.get('lesion_area')
+            )
+            app.current_scan_id = scan_id
+            return
+        
+        # Create permanent directory
+        temp_scan_dir = Path(temp_scan_dir)
+        PROJECT_ROOT = Path(__file__).parent.parent.parent.parent
+        permanent_dir = PROJECT_ROOT / "data" / "scans" / f"scan_{scan_timestamp}"
+        permanent_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"[SaveModal] Copying from temp: {temp_scan_dir}")
+        print(f"[SaveModal] To permanent: {permanent_dir}")
+        
+        # Copy only essential files from temp to permanent (excludes frame_*.jpg and other intermediate files)
+        files_to_copy = [
+            "full_leaf_stitched.jpg",
+            "output_image_original.png",
+            "output_image_reduced.png",
+            "scan_results.json",
+            "leaf_features.csv",
+            "leaf_analysis_results.json"
+        ]
+        
+        copied_count = 0
+        for filename in files_to_copy:
+            src_file = temp_scan_dir / filename
+            if src_file.exists():
+                try:
+                    shutil.copy2(src_file, permanent_dir / filename)
+                    copied_count += 1
+                    print(f"[SaveModal] ✓ Copied: {filename}")
+                except Exception as e:
+                    print(f"[SaveModal] ✗ Failed to copy {filename}: {e}")
+        
+        print(f"[SaveModal] Copied {copied_count}/{len(files_to_copy)} files")
+        
+        # Construct paths relative to kivy-lcd-app directory for database
+        scan_dir_name = permanent_dir.name
+        image_path = f"../data/scans/{scan_dir_name}/output_image_reduced.png"
+        thumbnail_path = f"../data/scans/{scan_dir_name}/full_leaf_stitched.jpg"
+        json_path = f"../data/scans/{scan_dir_name}/scan_results.json"
+        
+        # Generate thumbnail from permanent location
+        full_image_path = str(permanent_dir / "output_image_reduced.png")
+        if os.path.exists(full_image_path):
+            thumb_path = generate_thumbnail(full_image_path)
+        else:
+            thumb_path = thumbnail_path
+        
+        # Get disease and severity IDs
+        disease_id = get_or_create_disease(self.prediction_label) if self.prediction_label else None
+        severity_id = get_or_create_severity(self.severity_level) if self.severity_level else None
+        
+        # Get disease_class from classification results
+        classification = scan_result.get('classification', {})
+        disease_class = classification.get('class', self.prediction_label)
+        
+        # Get scan duration and status from results
+        timings = scan_result.get('timings', {})
+        scan_duration = timings.get('total') if timings else None
+        scan_status = scan_result.get('status', 'success')
+        
+        # Save to database with disease_class parameter
         scan_id = insert_scan_record(
             self.selected_tree_id, disease_id, severity_id,
-            self.severity_percentage, self.image_path, thumb_path, None,
+            self.severity_percentage, image_path, thumb_path, json_path,
+            disease_class=disease_class,
             confidence_score=scan_result.get('confidence'),
             total_leaf_area=scan_result.get('total_leaf_area'),
-            lesion_area=scan_result.get('lesion_area')
+            lesion_area=scan_result.get('lesion_area'),
+            scan_duration=scan_duration,
+            scan_status=scan_status
         )
+        
         app.current_scan_id = scan_id
+        print(f"[SaveModal] ✓ Saved to database: scan_id={scan_id}")

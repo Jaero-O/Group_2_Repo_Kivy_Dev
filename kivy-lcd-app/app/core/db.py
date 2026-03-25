@@ -450,7 +450,9 @@ def insert_severity_level(name: str, description: str = "") -> int:
 def insert_scan_record(tree_id: int, disease_id: Optional[int], severity_level_id: Optional[int],
                         severity_percentage: float, image_path: str, thumbnail_path: Optional[str] = None,
                         notes: Optional[str] = None, confidence_score: Optional[float] = None,
-                        total_leaf_area: Optional[float] = None, lesion_area: Optional[float] = None) -> int:
+                        total_leaf_area: Optional[float] = None, lesion_area: Optional[float] = None,
+                        disease_class: Optional[str] = None, scan_duration: Optional[float] = None,
+                        scan_status: Optional[str] = None) -> int:
     conn = get_connection()
     try:
         with closing(conn.cursor()) as cur:
@@ -458,16 +460,19 @@ def insert_scan_record(tree_id: int, disease_id: Optional[int], severity_level_i
                 """
                 INSERT INTO tbl_scan_record(tree_id, disease_id, severity_level_id, severity_percentage, 
                                              confidence_score, total_leaf_area, lesion_area,
-                                             image_path, thumbnail_path, notes)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                                             image_path, thumbnail_path, notes, disease_class,
+                                             scan_duration, scan_status)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (tree_id, disease_id, severity_level_id, severity_percentage, 
                  confidence_score, total_leaf_area, lesion_area,
-                 image_path, thumbnail_path, notes)
+                 image_path, thumbnail_path, notes, disease_class,
+                 scan_duration, scan_status)
             )
             conn.commit()
             # Invalidate scan count caches
             invalidate_cache('get_all_tree_scan_counts')
+            invalidate_cache('get_scan_detail')
             invalidate_cache('count_scans_for_tree')
             invalidate_cache('count_unassigned_scans')
             return int(cur.lastrowid)

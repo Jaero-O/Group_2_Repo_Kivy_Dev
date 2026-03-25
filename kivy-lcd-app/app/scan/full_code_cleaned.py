@@ -44,7 +44,11 @@ class ScanPipeline:
     Camera and models stay loaded between scans.
     """
 
-    _instance = None  # Singleton
+# Generate unique scan timestamp (for later use when saving)
+SCAN_TIMESTAMP = datetime.now().strftime("%Y%m%d_%H%M%S")
+# Use script directory as working temp directory (files will be overwritten each scan)
+SCAN_DIR = SCRIPT_DIR
+print(f"✓ Using temp scan directory: {SCAN_DIR}", file=sys.stderr)
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
@@ -88,6 +92,264 @@ class ScanPipeline:
             # ~ "left_shifts":  [0, -21, -27, -44],
             "crop_top_px":  [0, 152, 9, 4],
             "left_shifts":  [0, -29, -39, -56],
+# ============================================================
+# GLOBAL STATE
+# ============================================================
+current_pos = 0
+results = {
+    "timestamp": datetime.now().isoformat(),
+    "timings": {},
+    "classification": None,
+    "analysis": None,
+    "errors": []
+}
+
+# ============================================================
+# UTILITY: Live JSON reporting
+# ============================================================
+def report_phase(phase, pct=0, frame_index=0, total_frames=4, reduced_image=None, message=None):
+    data = {
+        "phase": phase,
+        "pct": pct,
+        "frame_index": frame_index,
+        "total_frames": total_frames
+    }
+    if reduced_image:
+        data["reduced_image"] = reduced_image
+    if message:
+        data["message"] = message
+    print(json.dumps(data), flush=True)
+
+# ============================================================
+# GPIO INITIALIZATION
+# ============================================================
+GPIO.setmode(GPIO.BCM)
+GPIO.setup(CONFIG["dir_pin"], GPIO.OUT)
+GPIO.setup(CONFIG["step_pin"], GPIO.OUT)
+GPIO.setup(CONFIG["enable_pin"], GPIO.OUT, initial=GPIO.HIGH)
+GPIO.setup(CONFIG["light_pin"], GPIO.OUT, initial=GPIO.HIGH)
+GPIO.setup(CONFIG["ir_pin"], GPIO.IN)
+
+# ============================================================
+# CAMERA INITIALIZATION
+# ============================================================
+picam2 = Picamera2()
+picam2.configure(picam2.create_still_configuration(main={"size": CONFIG["camera_size"]}))
+picam2.start()
+time.sleep(0.5)
+picam2.set_controls({"AfMode": 0, "LensPosition": 9})
+
+# Camera warm-up
+GPIO.output(CONFIG["light_pin"], GPIO.LOW)
+picam2.set_controls({"AeEnable": True, "AwbEnable": True})
+report_phase("warming_up", pct=0, message="Camera warming up...")
+time.sleep(3)
+picam2.set_controls({"AeEnable": False, "AwbEnable": False})
+GPIO.output(CONFIG["light_pin"], GPIO.HIGH)
+report_phase("warming_up", pct=100, message="Camera warm-up done.")
+
+U2NET_SESSION = new_session(model_name="u2net")
+
+# ============================================================
+# MOTOR CONTROL
+# ============================================================
+def pulse_motor(freq, steps):
+    delay = 1 / freq / 2
+    GPIO.output(CONFIG["enable_pin"], GPIO.LOW)
+    for _ in range(steps):
+        GPIO.output(CONFIG["step_pin"], GPIO.HIGH)
+        time.sleep(delay)
+        GPIO.output(CONFIG["step_pin"], GPIO.LOW)
+        time.sleep(delay)
+    GPIO.output(CONFIG["enable_pin"], GPIO.HIGH)
+
+def move_steps(steps, direction):
+    global current_pos
+    GPIO.output(CONFIG["dir_pin"], direction)
+    pulse_motor(CONFIG["max_freq"], steps)
+    current_pos += steps if direction == GPIO.HIGH else -steps
+
+def move_to_sensor(direction):
+    GPIO.output(CONFIG["dir_pin"], direction)
+    delay = 1 / CONFIG["max_freq"] / 2
+    step_count = 0
+    GPIO.output(CONFIG["enable_pin"], GPIO.LOW)
+    while GPIO.input(CONFIG["ir_pin"]) != GPIO.HIGH:
+        GPIO.output(CONFIG["step_pin"], GPIO.HIGH)
+        time.sleep(delay)
+        GPIO.output(CONFIG["step_pin"], GPIO.LOW)
+        time.sleep(delay)
+        step_count += 1
+    GPIO.output(CONFIG["enable_pin"], GPIO.HIGH)
+    return step_count
+
+def home_motor(retries=2):
+    global current_pos
+    for attempt in range(retries):
+        if GPIO.input(CONFIG["ir_pin"]) == GPIO.HIGH:
+            current_pos = 0
+            report_phase("homing", pct=100)
+            return True
+        move_to_sensor(GPIO.LOW)
+        time.sleep(0.5)
+        if GPIO.input(CONFIG["ir_pin"]) == GPIO.HIGH:
+            curstr(SCAN_DIR / f"frame_{frame_num:02d}.jpg")
+            report_phase("homing", pct=100)
+            return True
+    results["errors"].append("Homing failed")
+    report_phase("homing", pct=0, message="Homing failed")
+    return True
+
+# ============================================================
+# IMAGE CAPTURE
+# ============================================================
+def capture_image(frame_num):
+    filename = str(SCAN_DIR / f"frame_{frame_num:02d}.jpg")
+    GPIO.output(CONFIG["light_pin"], GPIO.LOW)
+    time.sleep(0.5)
+    picam2.capture_file(filename)
+    GPIO.output(CONFIG["light_pin"], GPIO.HIGH)
+    time.sleep(0.5)
+    report_phase("capturing", pct=int((frame_num+1)/len(CONFIG["abs_positions"])*100), frame_index=frame_num, total_frames=len(CONFIG["abs_positions"]))
+    return filename
+
+# ============================================================
+# SCANNING & STITCHING
+# ============================================================
+def scan_and_stitch():
+    global current_pos
+    # Capture frames
+    for frame_idx, target_pos in enumerate(CONFIG["abs_positions"]):
+        direction = GPIO.HIGH if target_pos > current_pos else GPIO.LOW
+        steps = max(abs(target_pos - current_pos) - CONFIG["step_reduction"], 0)
+        move_steps(steps, direction)
+        capture_image(frame_idx)
+
+    # Load and stitch images
+    frames = [str(SCAN_DIR / f"frame_{i:02d}.jpg") for i in range(len(CONFIG["abs_positions"]))]
+    print(f"Loading frames from: {frames[0]}", file=sys.stderr)
+    
+    images = [cv2.imread(f) for f in frames]
+    
+    # Check which frames failed to load
+    failed_frames = [f for i, (f, img) in enumerate(zip(frames, images)) if img is None]
+    if failed_frames:
+        print(f"✗ Failed to load frames: {failed_frames}", file=sys.stderr)
+        for frame_path in frames:
+            exists = Path(frame_path).exists()
+            print(f"  {frame_path}: {'EXISTS' if exists else 'MISSING'}", file=sys.stderr)
+        results["errors"].append("Failed to load frames")
+        report_phase("error", message="Failed to load frames")
+        return False
+    
+    print(f"✓ All {len(images)} frames loaded successfully", file=sys.stderr)
+
+    # Crop & stitch
+    for i in range(1, 4):
+        h = images[i].shape[0]
+        crop_amt = min(CONFIG["crop_top_px"][i], h - 1)
+        images[i] = images[i][crop_amt:, :].copy()
+
+    width = max(img.shape[1] for img in images)
+    total_height = sum(img.shape[0] for img in images)
+    stitched = np.zeros((total_height, width, 3), dtype=np.uint8)
+    current_y = 0
+    for img, shift in zip(images, CONFIG["left_shifts"]):
+        h, w = img.shape[:2]
+        src_x_start = max(0, -shift)
+        src_x_end = w
+        x_start = max(0, shift)
+        width_to_paste = src_x_end - src_x_start
+        stitched[current_y:current_y+h, x_start:x_start+width_to_paste] = img[:, src_x_start:src_x_end]
+        current_y += h
+    cv2.imwrite(CONFIG["output_stitched"], stitched)
+    report_phase("stitching", pct=100)
+    return True
+
+# ============================================================
+# IMAGE PROCESSING
+# ============================================================
+def process_leaf_image(input_path, output_path):
+    report_phase("processing", pct=0)
+    img_pil = Image.open(input_path)
+    img_no_bg = remove(img_pil, session=U2NET_SESSION)
+    img_no_bg = img_no_bg.convert("RGBA")
+    background = Image.new("RGB", img_no_bg.size, (255, 255, 255))
+    background.paste(img_no_bg, mask=img_no_bg.split()[3])
+    img_cv = cv2.cvtColor(np.array(background), cv2.COLOR_RGB2BGR)
+    gray = cv2.cvtColor(img_cv, cv2.COLOR_BGR2GRAY)
+    _, leaf_mask = cv2.threshold(gray, 250, 255, cv2.THRESH_BINARY_INV)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+    leaf_mask = cv2.morphologyEx(leaf_mask, cv2.MORPH_CLOSE, kernel)
+    leaf_mask = cv2.morphologyEx(leaf_mask, cv2.MORPH_OPEN, kernel)
+    contours, _ = cv2.findContours(leaf_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if not contours:
+        results["errors"].append("No leaf detected")
+        report_phase("error", message="No leaf detected")
+        return False
+    leaf_contour = max(contours, key=cv2.contourArea)
+    x, y, w_crop, h_crop = cv2.boundingRect(leaf_contour)
+    cropped_leaf = img_cv[y:y+h_crop, x:x+w_crop]
+    Image.fromarray(cv2.cvtColor(cropped_leaf, cv2.COLOR_BGR2RGB)).save(CONFIG["input_image_path"])
+    img_final = Image.fromarray(cv2.cvtColor(cropped_leaf, cv2.COLOR_BGR2RGB))
+    img_ratio = img_final.width / img_final.height
+    target_ratio = CONFIG["target_width"] / CONFIG["target_height"]
+    if img_ratio > target_ratio:
+        new_width = CONFIG["target_width"]
+        new_height = int(CONFIG["target_width"] / img_ratio)
+    else:
+        new_height = CONFIG["target_height"]
+        new_width = int(CONFIG["target_height"] * img_ratio)
+    img_resized = img_final.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    img_final_padded = ImageOps.pad(img_resized, (CONFIG["target_width"], CONFIG["target_height"]), color="white")
+    img_final_padded.save(output_path)
+    report_phase("processing", pct=100, reduced_image=output_path)
+    return True
+
+# ============================================================
+# CLASSIFICATION
+# ============================================================
+def classify_leaf():
+    report_phase("classifying", pct=0)
+    try:
+        result = subprocess.run(
+            [CONFIG["python_310_path"], CONFIG["classifier_script"], CONFIG["input_image_path"], CONFIG["model_path"]],
+            capture_output=True, text=True, check=True, timeout=30
+        )
+        data = json.loads(result.stdout)
+        report_phase("classifying", pct=100)
+        return data
+    except Exception as e:
+        results["errors"].append(str(e))
+        report_phase("error", message=f"Classification failed: {e}")
+        return {"error": str(e)}
+
+# ============================================================
+# DATABASE STORAGE
+# ============================================================
+def save_to_database():
+    """Save complete scan results to database."""
+    try:
+        db_path = CONFIG["database_path"]
+        conn = sqlite3.connect(db_path)
+        cur = conn.cursor()
+        
+        # Extract results
+        classification = results.get("classification", {})
+        analysis = results.get("analysis", {})
+        
+        disease_class = classification.get("class", "Unknown")
+        confidence = classification.get("confidence", 0.0)
+        all_preds = classification.get("probabilities", {})
+        
+        # Map disease class to disease_id
+        disease_map = {
+            "Anthracnose": 1,
+            "Healthy": None,
+            "Bacterial Canker": 2,
+            "Cutting Weevil": 3,
+            "Powdery Mildew": 4,
+            "Sooty Mould": 5,
         }
 
         # ── GPIO ──────────────────────────────────────────────────────────────
