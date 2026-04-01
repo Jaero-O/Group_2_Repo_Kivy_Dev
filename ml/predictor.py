@@ -20,8 +20,8 @@ class DiseasePredictor:
         self.model_path = os.getenv("MANGOFY_MODEL_PATH", model_path)
         self.labels_path = os.getenv("MANGOFY_LABELS_PATH", labels_path or "")
         
-        # Get Python 3.10 interpreter path - default to system python3
-        self.python310_path = os.getenv("MANGOFY_PYTHON310_PATH", "python3")
+        # Get Python 3.10 interpreter path - default to currently running interpreter
+        self.python310_path = os.getenv("MANGOFY_PYTHON310_PATH", sys.executable)
         if not self.python310_path:
             raise RuntimeError(
                 "MANGOFY_PYTHON310_PATH environment variable must be set to your Python 3.10 interpreter path"
