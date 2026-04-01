@@ -185,6 +185,7 @@ class ImageSelection(Screen):
 
             scans = get_scans_filtered(
                 tree_id=self.tree_id,
+                unassigned=(self.tree_name == "Unassigned Scans"),
                 disease_name=disease_filter,
                 start_date=start_date,
                 end_date=end_date,
