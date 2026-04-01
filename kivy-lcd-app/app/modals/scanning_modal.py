@@ -123,13 +123,21 @@ class ScanningModal(ModalView):
         app = App.get_running_app()
 
         app.current_scan_id = results.get("database_id")
+        probs = classification.get("probabilities", {}) if classification is not None else {}
         app.scan_result = {
             "label":               classification.get("class", "Unknown"),
             "confidence":          classification.get("confidence", 0.0),
-            "severity_percentage": analysis.get("severity_percent", 0.0),
+            "severity_percentage": analysis.get("severity_percentage", analysis.get("severity_percent", 0.0)),
             "severity_level":      analysis.get("severity_level", "None"),
+            "pred_anthracnose":    probs.get("Anthracnose", 0.0),
+            "pred_healthy":        probs.get("Healthy", 0.0),
+            "pred_bacterial_canker": probs.get("Bacterial Canker", 0.0),
+            "pred_cutting_weevil": probs.get("Cutting Weevil", 0.0),
+            "pred_powdery_mildew": probs.get("Powdery Mildew", 0.0),
+            "pred_sooty_mould":    probs.get("Sooty Mould", 0.0),
             "image_path":          results.get("reduced_image", ""),
             "scan_timestamp":      results.get("timestamp", "N/A"),
+            "scan_dir":            results.get("scan_dir", ""),
         }
 
         self.image_path  = results.get("reduced_image", "")

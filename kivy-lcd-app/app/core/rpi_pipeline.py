@@ -98,6 +98,9 @@ SCHEMA_STATEMENTS = [
         damage_pct_inpaint REAL,
         lesion_glcm_contrast REAL,
         lesion_glcm_dissimilarity REAL,
+        lesion_glcm_energy REAL,
+        lesion_glcm_homogeneity REAL,
+        lesion_glcm_correlation REAL,
         
         -- File references
         image_path TEXT,
@@ -450,18 +453,19 @@ def insert_severity_level(name: str, description: str = "") -> int:
 def insert_scan_record(tree_id: int, disease_id: Optional[int], severity_level_id: Optional[int],
                         severity_percentage: float, image_path: str, thumbnail_path: Optional[str] = None,
                         notes: Optional[str] = None, confidence_score: Optional[float] = None,
-                        total_leaf_area: Optional[float] = None, lesion_area: Optional[float] = None) -> int:
+                        total_leaf_area: Optional[float] = None, lesion_area: Optional[float] = None,
+                        disease_class: Optional[str] = None, severity_level: Optional[str] = None) -> int:
     conn = get_connection()
     try:
         with closing(conn.cursor()) as cur:
             cur.execute(
                 """
-                INSERT INTO tbl_scan_record(tree_id, disease_id, severity_level_id, severity_percentage, 
+                INSERT INTO tbl_scan_record(tree_id, disease_id, severity_level_id, disease_class, severity_level, severity_percentage, 
                                              confidence_score, total_leaf_area, lesion_area,
                                              image_path, thumbnail_path, notes)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
-                (tree_id, disease_id, severity_level_id, severity_percentage, 
+                (tree_id, disease_id, severity_level_id, disease_class, severity_level, severity_percentage, 
                  confidence_score, total_leaf_area, lesion_area,
                  image_path, thumbnail_path, notes)
             )
