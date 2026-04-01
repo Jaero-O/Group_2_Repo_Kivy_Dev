@@ -133,6 +133,9 @@ def create_database():
                 damage_pct_inpaint REAL,
                 lesion_glcm_contrast REAL,
                 lesion_glcm_dissimilarity REAL,
+                lesion_glcm_energy REAL,
+                lesion_glcm_homogeneity REAL,
+                lesion_glcm_correlation REAL,
                 
                 -- File references
                 image_path TEXT,
