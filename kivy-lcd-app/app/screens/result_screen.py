@@ -62,20 +62,25 @@ class ResultScreen(Screen):
                 self.severity_percentage = severity_pct or 0.0
                 self.severity_level = severity_lvl or "None"
 
+                placeholder_image = os.path.join(os.getcwd(), 'assets', 'placeholder.png')
                 if img_path:
                     if not os.path.isabs(img_path):
                         app_root = os.getcwd()
                         abs_path = os.path.abspath(os.path.join(app_root, img_path))
-                        self.image_path = abs_path
                         print(f"[ResultScreen] Image path: {img_path} -> {abs_path}")
-                        print(f"[ResultScreen] Image exists: {os.path.exists(abs_path)}")
                     else:
-                        self.image_path = img_path
-                        print(f"[ResultScreen] Image path (absolute): {img_path}")
-                        print(f"[ResultScreen] Image exists: {os.path.exists(img_path)}")
+                        abs_path = img_path
+                        print(f"[ResultScreen] Image path (absolute): {abs_path}")
+
+                    if os.path.exists(abs_path):
+                        self.image_path = abs_path
+                        print(f"[ResultScreen] Image exists: True")
+                    else:
+                        self.image_path = placeholder_image
+                        print(f"[ResultScreen] Image exists: False. Falling back to placeholder: {placeholder_image}")
                 else:
-                    self.image_path = ""
-                    print(f"[ResultScreen] No image path in database")
+                    self.image_path = placeholder_image
+                    print(f"[ResultScreen] No image path in database. Using placeholder: {placeholder_image}")
 
                 self.disease_description = description or ""
                 self.disease_symptoms = symptoms or ""
@@ -130,11 +135,16 @@ class ResultScreen(Screen):
         self.severity_percentage = data.get("severity_percentage") or 0.0
         self.severity_level = data.get("severity_level") or "None"
 
+        placeholder_image = os.path.join(os.getcwd(), 'assets', 'placeholder.png')
         image_path = data.get("image_path") or ""
-        self.image_path = image_path
+        if image_path and os.path.exists(image_path):
+            self.image_path = image_path
+            print(f"[ResultScreen] Image path (app state): {image_path} exists")
+        else:
+            self.image_path = placeholder_image
+            print(f"[ResultScreen] Image missing or invalid: {image_path}. Using placeholder: {placeholder_image}")
 
         print(f"[ResultScreen] Loaded from app state: {self.prediction_label}, {self.prediction_confidence:.2%}, image={self.image_path}")
-        print(f"[ResultScreen] Image exists: {os.path.exists(self.image_path) if self.image_path else False}")
 
         self._update_classification_tag(self.prediction_confidence)
 
