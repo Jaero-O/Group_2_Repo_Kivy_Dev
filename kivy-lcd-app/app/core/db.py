@@ -544,6 +544,51 @@ def query_record_by_image_path(image_path: str) -> Optional[Dict[str, Any]]:
         return_connection(conn)
 
 
+def get_scan_by_id(scan_id: int) -> Optional[Dict[str, Any]]:
+    """Get a scan row by scan_id."""
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute(
+                """
+                SELECT r.id, r.tree_id, t.name as tree_name, r.disease_id, d.name as disease_name,
+                       r.severity_level_id, s.name as severity_name,
+                       r.scan_timestamp, r.scan_duration, r.scan_status,
+                       r.disease_class, r.confidence_score, r.image_path, r.thumbnail_path,
+                       r.notes, r.source
+                FROM tbl_scan_record r
+                LEFT JOIN tbl_tree t ON r.tree_id=t.id
+                LEFT JOIN tbl_disease d ON r.disease_id=d.id
+                LEFT JOIN tbl_severity_level s ON r.severity_level_id=s.id
+                WHERE r.id=?
+                """,
+                (scan_id,)
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            return {
+                "id": row[0],
+                "tree_id": row[1],
+                "tree_name": row[2],
+                "disease_id": row[3],
+                "disease_name": row[4],
+                "severity_level_id": row[5],
+                "severity_name": row[6],
+                "scan_timestamp": row[7],
+                "scan_duration": row[8],
+                "scan_status": row[9],
+                "disease_class": row[10],
+                "confidence_score": row[11],
+                "image_path": row[12],
+                "thumbnail_path": row[13],
+                "notes": row[14],
+                "source": row[15],
+            }
+    finally:
+        return_connection(conn)
+
+
 def get_recent_scans(limit: int = 50) -> List[Dict[str, Any]]:
     conn = get_connection()
     try:
