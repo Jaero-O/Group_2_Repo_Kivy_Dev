@@ -334,7 +334,8 @@ def analyze_leaf(
         "leaf_area_cm2":                 area_cm2(leaf_area_px,   effective_cm_per_pixel),
         "lesion_area_cm2":               area_cm2(lesion_area_px, effective_cm_per_pixel),
         # Severity (CABI/EPPO)
-        "severity_percent":              severity_pct,             # FIX #1
+        "severity_percent":              severity_pct,             # FIX #1 (legacy compatibility)
+        "severity_percentage":           severity_pct,             # DB and UI schema key
         "severity_level":                severity_to_level(severity_pct),  # FIX #5 + #11
         # Lesion
         "lesion_count":                  lesion_count,
@@ -349,7 +350,8 @@ def analyze_leaf(
         "lesion_to_leaf_color_ratio_g":  color_ratio_G,
         # Vegetation indices
         "exg_mean":                      exg_mean,
-        "grvi_mean":                     grvi_mean,    # FIX #9: was ndvi_proxy_mean
+        "ndvi_proxy_mean":               grvi_mean,    # FIX #9: align with DB schema
+        "grvi_mean":                     grvi_mean,
         # Shape
         "leaf_solidity":                 solidity,
         "leaf_circularity":              circularity,
