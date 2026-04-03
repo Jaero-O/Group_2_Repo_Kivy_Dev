@@ -9,10 +9,6 @@ onnxruntime>=1.16.0  # required backend for rembg and classification
 pandas>=2.0.0  # CSV output for leaf features
 scikit-image>=0.21.0  # texture analysis (graycomatrix, graycoprops)
 
-# Deep learning (for classification)
-torchvision>=0.15.0  # Image preprocessing transforms
-torch>=2.0.0  # PyTorch (required by torchvision)
-
 # Hardware interfaces for Raspberry Pi
 RPi.GPIO>=0.7.1  # GPIO control for motor/LED
 
@@ -21,13 +17,6 @@ RPi.GPIO>=0.7.1  # GPIO control for motor/LED
 
 # Optional: TFLite runtime (lighter than full tensorflow)
 # tflite-runtime==2.13.0
-kivy>=2.3.0
-numpy>=1.24.0
-Pillow>=10.0.0
-# tensorflow==2.13.0
-opencv-python>=4.9.0.0  # image processing for lesion segmentation
-rembg>=2.0.50  # background removal for leaf extraction
-onnxruntime>=1.16.0  # required backend for rembg
 # Hardware interfaces (typically pre-installed on Raspberry Pi OS):
 # picamera2
 # RPi.GPIO
