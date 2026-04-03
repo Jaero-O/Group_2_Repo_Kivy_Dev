@@ -5,13 +5,19 @@ import hashlib
 import sqlite3
 from pathlib import Path
 from datetime import datetime
-from flask import Flask, jsonify, send_from_directory, abort
+from flask import Flask, jsonify, send_from_directory, abort, request
 
 app = Flask(__name__)
 
 DB_PATH = os.getenv('MANGOFY_DB_PATH', os.path.join(os.path.dirname(__file__), 'mangofy.db'))
 IMAGE_DIR = os.getenv('MANGOFY_IMAGE_DIR', '/home/pi/captured_images')
-PI_IP = '192.168.4.1'
+PI_IP = os.getenv('PI_IP', '192.168.4.1')
+
+
+def _base_api_url() -> str:
+    if request:
+        return f"{request.scheme}://{request.host}"
+    return f"http://{PI_IP}:5000"
 
 
 def _normalize_timestamp(value: str) -> str:
@@ -34,7 +40,7 @@ def _normalize_timestamp(value: str) -> str:
 def _scan_metadata_from_row(row: sqlite3.Row) -> dict:
     image_path = row['image_path'] or ''
     image_file = os.path.basename(image_path) if image_path else f"scan_{row['id']}.jpg"
-    image_uri = f'http://{PI_IP}:5000/api/image/{image_file}'
+    image_uri = f'{_base_api_url()}/api/image/{image_file}'
 
     description = []
     if row['disease_name']:
@@ -46,21 +52,24 @@ def _scan_metadata_from_row(row: sqlite3.Row) -> dict:
     if not description:
         description = [f'Scan from Pi (id={row["id"]})']
 
+    checksum = hashlib.sha256(json.dumps({
+        'id': row['id'],
+        'scan_timestamp': row['scan_timestamp'],
+        'disease_class': row['disease_class'],
+        'confidence_score': row['confidence_score'],
+        'image_path': image_path,
+    }, sort_keys=True).encode('utf-8')).hexdigest()
+
     metadata = {
-        'id': str(row['id']),
+        'id': row['id'] if isinstance(row['id'], int) else int(row['id']),
         'title': row['tree_name'] if row['tree_name'] else f'Scan {row["id"]}',
         'description': ' | '.join(description),
         'timestamp': row['scan_timestamp'],
         'image_filename': image_file,
         'image_url': image_uri,
         'updated_at': row['scan_timestamp'],
-        'metadata_hash': hashlib.sha256(json.dumps({
-            'id': row['id'],
-            'scan_timestamp': row['scan_timestamp'],
-            'disease_class': row['disease_class'],
-            'confidence_score': row['confidence_score'],
-            'image_path': image_path,
-        }, sort_keys=True).encode('utf-8')).hexdigest(),
+        'checksum': checksum,
+        'metadata_hash': checksum,
     }
     return metadata
 
@@ -152,6 +161,14 @@ def get_scan_route(scan_id):
 def get_all_scans_route():
     items = _get_all_scans()
     return jsonify(items)
+
+
+@app.route('/api/scan/latest', methods=['GET'])
+def get_latest_scan_route():
+    items = _get_all_scans()
+    if not items:
+        return jsonify({}), 404
+    return jsonify(items[0])
 
 
 @app.route('/api/scan/since/<timestamp>', methods=['GET'])
