@@ -1,0 +1,12 @@
+{
+  "timestamp": "2026-03-04T01:00:38.728063",
+  "timings": {
+    "total": 0.5403075218200684
+  },
+  "classification": null,
+  "analysis": null,
+  "errors": [
+    "name 'curstr' is not defined"
+  ],
+  "status": "error"
+}

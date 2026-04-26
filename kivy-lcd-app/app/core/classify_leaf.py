@@ -8,7 +8,6 @@ import numpy as np
 from PIL import Image
 import onnxruntime as ort
 import json
-from torchvision import transforms
 
 # ============================================================
 # GLOBAL MODEL SESSION (loads once)
@@ -28,28 +27,44 @@ def load_session(model_path):
 # ============================================================
 def preprocess_image(image_path):
     """
-    Preprocess image for model inference.
+    Preprocess image for model inference without torchvision.
     
     Args:
         image_path: Path to input image
     
     Returns:
-        Preprocessed tensor as numpy array
+        Preprocessed tensor as numpy array [1, 3, 224, 224]
     """
     img = Image.open(image_path).convert('RGB')
-    
-    preprocess = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(
-            mean=[0.485, 0.456, 0.406],
-            std=[0.229, 0.224, 0.225]
-        )
-    ])
-    
-    input_tensor = preprocess(img).unsqueeze(0).numpy()
-    return input_tensor
+
+    # resize shorter side to 256 preserving aspect ratio, then center crop 224
+    w, h = img.size
+    if w < h:
+        new_w = 256
+        new_h = int(round(h * 256 / w))
+    else:
+        new_h = 256
+        new_w = int(round(w * 256 / h))
+    img = img.resize((new_w, new_h), Image.BILINEAR)
+
+    left = (new_w - 224) // 2
+    top = (new_h - 224) // 2
+    right = left + 224
+    bottom = top + 224
+    img = img.crop((left, top, right, bottom))
+
+    arr = np.asarray(img, dtype=np.float32) / 255.0
+    # reshape to CHW
+    arr = np.transpose(arr, (2, 0, 1))
+
+    # normalize
+    mean = np.array([0.485, 0.456, 0.406], dtype=np.float32).reshape(3, 1, 1)
+    std = np.array([0.229, 0.224, 0.225], dtype=np.float32).reshape(3, 1, 1)
+    arr = (arr - mean) / std
+
+    # add batch
+    arr = np.expand_dims(arr, axis=0)
+    return arr
 
 
 # ============================================================

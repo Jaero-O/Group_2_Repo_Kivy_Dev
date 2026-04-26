@@ -1,0 +1,26 @@
+{
+  "timestamp": "2026-01-07T11:07:40.310809",
+  "timings": {
+    "total": 34.89043378829956
+  },
+  "classification": {
+    "class": "Die Back",
+    "class_index": 3,
+    "confidence": 0.9992128610610962,
+    "probabilities": {
+      "Anthracnose": 7.959887443576008e-05,
+      "Bacterial Canker": 0.0006731567555107176,
+      "Cutting Weevil": 3.1485342333326116e-05,
+      "Die Back": 0.9992128610610962,
+      "Gall Midge": 6.593674584109976e-07,
+      "Healthy": 4.302928573451936e-07,
+      "Powdery Mildew": 1.661562237131875e-06,
+      "Sooty Mould": 1.4314159102468693e-07
+    }
+  },
+  "analysis": null,
+  "errors": [
+    "Database error: table tbl_scan_record has no column named scan_duration"
+  ],
+  "status": "success"
+}

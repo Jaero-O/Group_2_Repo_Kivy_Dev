@@ -4,88 +4,14 @@ from kivy.animation import Animation
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
-from kivy.uix.textinput import TextInput
 from kivy.uix.image import Image
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.clock import Clock
-from kivy.lang import Builder
-from kivy.app import App  # Added import for App used in navigation
+from kivy.app import App
 
-
-# Load confirmation modal template
-Builder.load_string("""
-<ConfirmDeleteModal@BoxLayout>:
-    orientation: 'vertical'
-    size_hint: None, None
-    size: 320, 150
-    pos_hint: {"center_x": 0.5, "center_y": 0.5}
-    padding: [20, 20, 20, 15]
-    spacing: 15
-    
-    canvas.before:
-        Color:
-            rgba: 1, 1, 1, 1
-        RoundedRectangle:
-            pos: self.pos
-            size: self.size
-            radius: [15]
-        Color:
-            rgba: 0, 0, 0, 0.2
-        Line:
-            rounded_rectangle: (self.x, self.y, self.width, self.height, 15)
-            width: 1.5
-    
-    Label:
-        id: title_label
-        color: 49/255, 49/255, 49/255, 1
-        font_size: 18
-        bold: True
-        size_hint_y: 0.4
-    
-    Label:
-        text: "This action cannot be undone."
-        color: 99/255, 99/255, 99/255, 1
-        font_size: 14
-        size_hint_y: 0.3
-    
-    BoxLayout:
-        size_hint_y: 0.3
-        spacing: 10
-        
-        Button:
-            id: cancel_btn
-            text: "Cancel"
-            font_size: 15
-            bold: True
-            color: 49/255, 49/255, 49/255, 1
-            background_normal: ''
-            background_color: 0, 0, 0, 0
-            
-            canvas.before:
-                Color:
-                    rgba: 220/255, 220/255, 220/255, 1
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [8]
-        
-        Button:
-            id: delete_btn
-            text: "Delete"
-            font_size: 15
-            bold: True
-            color: 1, 1, 1, 1
-            background_normal: ''
-            background_color: 0, 0, 0, 0
-            
-            canvas.before:
-                Color:
-                    rgba: 220/255, 53/255, 69/255, 1
-                RoundedRectangle:
-                    pos: self.pos
-                    size: self.size
-                    radius: [8]
-""")
+# Import the separate modals
+from app.modals.delete_modal import DeleteModal
+from app.modals.edit_modal import EditModal
 
 
 class RecordTreeItem(ButtonBehavior, BoxLayout):
@@ -100,6 +26,8 @@ class RecordsScreen(Screen):
     active_card = ObjectProperty(None, allownone=True)
     total_scan_count = NumericProperty(0)
     is_loading = BooleanProperty(False)
+    show_empty = BooleanProperty(False)
+    empty_message = StringProperty("No records yet.\nTap 'Add Tree' to get started.")
 
     def on_pre_enter(self, *args):
         self.build_tree_list()
@@ -109,36 +37,26 @@ class RecordsScreen(Screen):
         from threading import Thread
         from kivy.clock import Clock
         
-        # Show loading state
         self.is_loading = True
         tree_list = self.ids.tree_list
         tree_list.clear_widgets()
         
         def load_data_background():
-            """Execute database queries in background thread."""
             from app.core.db import list_trees, get_all_tree_scan_counts, count_unassigned_scans
-            
-            # Fetch all data in background
             db_trees = list_trees()
             scan_counts = get_all_tree_scan_counts()
             unassigned_count = count_unassigned_scans()
-            
-            # Schedule UI update on main thread
             Clock.schedule_once(lambda dt: self._populate_tree_list(db_trees, scan_counts, unassigned_count), 0)
         
-        # Start background thread
         thread = Thread(target=load_data_background, daemon=True)
         thread.start()
     
     def _populate_tree_list(self, db_trees, scan_counts, unassigned_count):
-        """Populate UI with loaded data (called on main thread)."""
-        # Augment with scan counts
         self.trees = [
-            {"id": t["id"], "name": t["name"], "count": scan_counts.get(t["id"], 0) }
+            {"id": t["id"], "name": t["name"], "count": scan_counts.get(t["id"], 0)}
             for t in db_trees
         ]
         
-        # Add "Unassigned Scans" category if there are any
         if unassigned_count > 0:
             self.trees.insert(0, {
                 "id": None,
@@ -149,35 +67,31 @@ class RecordsScreen(Screen):
         
         self.filtered_trees = self.trees.copy()
         self.total_scan_count = sum(t["count"] for t in self.trees)
-
-        # Hide action buttons initially
         self.ids.action_buttons.opacity = 0
         self.ids.action_buttons.disabled = True
 
-        # Populate UI
+        if not self.trees:
+            self.show_empty = True
+            self.empty_message = "No records yet.\nTap 'Add Tree' to get started."
+        else:
+            self.show_empty = False
+
         for t in self.trees:
             self.add_tree_item(t)
         
-        # Hide loading state
         self.is_loading = False
 
     def add_tree_item(self, tree_obj):
         name = tree_obj["name"]
         scan_count = tree_obj.get("count", 0)
         tree_id = tree_obj.get("id")
-        # Create card
         box = RecordTreeItem(tree_name=name)
         box.tree_id = tree_id
         
-        # Set up initial canvas with border
         from kivy.graphics import Color, RoundedRectangle, Line
         with box.canvas.before:
             box.bg_color = Color(255/255, 255/255, 255/255, 1)
-            box.bg_rect = RoundedRectangle(
-                pos=box.pos,
-                size=box.size,
-                radius=[11]
-            )
+            box.bg_rect = RoundedRectangle(pos=box.pos, size=box.size, radius=[11])
             box.border_color = Color(0, 0, 0, 0.1)
             box.border = Line(
                 rounded_rectangle=(box.x, box.y, box.width, box.height, 11),
@@ -189,10 +103,8 @@ class RecordsScreen(Screen):
             size=lambda w, v: self.update_card_graphics(w)
         )
         
-        # Main content container
         content_box = BoxLayout(orientation='horizontal', spacing=10)
         
-        # Left name / right count stacked vertically
         name_label = Label(
             text=name,
             color=(56/255, 73/255, 38/255, 1),
@@ -205,7 +117,6 @@ class RecordsScreen(Screen):
         box.label = name_label
         content_box.add_widget(name_label)
 
-        # View button shows count
         view_button = Button(
             text=f"View ({scan_count})",
             color=(0/255, 152/255, 0/255, 1),
@@ -219,29 +130,22 @@ class RecordsScreen(Screen):
             background_color=(0, 0, 0, 0),
             bold=False
         )
-        view_button.bind(on_release=lambda btn: self.navigate_to_image_selection(box))
+        view_button.bind(on_press=lambda btn: self.navigate_to_image_selection(box))
         content_box.add_widget(view_button)
         box.view_button = view_button
         
         box.add_widget(content_box)
-
-        # Click detection for card selection (not navigation)
-        box.bind(on_release=self.on_card_click)
+        box.bind(on_press=self.on_card_click)
         box.is_selected = False
         
         self.ids.tree_list.add_widget(box)
-
-        # Fade-in
         box.opacity = 0
         Animation(opacity=1, duration=0.3, t='out_quad').start(box)
 
     def on_card_click(self, card):
-        """Handle card selection"""
-        # Deselect previous card
         if self.active_card and self.active_card != card:
             self.deselect_card(self.active_card)
         
-        # Toggle selection of current card
         if self.active_card == card:
             self.deselect_card(card)
             self.hide_action_buttons()
@@ -251,151 +155,99 @@ class RecordsScreen(Screen):
             self.active_card = card
 
     def select_card(self, card):
-        """Highlight card with green border"""
         card.is_selected = True
-        
-        # Change border to green with thicker width
         card.border_color.rgba = (0/255, 152/255, 0/255, 1)
         card.border.width = 2
-        
-        # Show action buttons
         self.show_action_buttons()
 
     def deselect_card(self, card):
-        """Remove highlight from card"""
         card.is_selected = False
-        
-        # Reset border to default gray with normal width
         card.border_color.rgba = (0, 0, 0, 0.1)
         card.border.width = 1
 
     def update_card_graphics(self, card):
-        """Update card graphics when position or size changes"""
         if hasattr(card, 'bg_rect'):
             card.bg_rect.pos = card.pos
             card.bg_rect.size = card.size
             card.border.rounded_rectangle = (card.x, card.y, card.width, card.height, 11)
 
     def show_action_buttons(self):
-        """Animate showing action buttons"""
         self.ids.action_buttons.disabled = False
         Animation(opacity=1, duration=0.2, t='out_quad').start(self.ids.action_buttons)
 
     def hide_action_buttons(self):
-        """Animate hiding action buttons"""
         Animation(opacity=0, duration=0.2, t='out_quad').start(self.ids.action_buttons)
         Clock.schedule_once(lambda dt: setattr(self.ids.action_buttons, 'disabled', True), 0.2)
 
     def on_edit_button(self):
-        """Handle edit button click"""
         if not self.active_card:
             return
-        
         self.edit_tree(self.active_card)
 
     def on_delete_button(self):
-        """Handle delete button click"""
         if not self.active_card:
             return
-        
         self.confirm_delete(self.active_card)
 
     def edit_tree(self, card):
-        """Enable editing mode for tree name (DB-backed)."""
         if card.is_editing:
             return
-        from app.core.db import update_tree_name, get_tree_by_name
-        card.is_editing = True
-        original_name = card.tree_name
-        content_box = card.children[0]
-        label = card.label
-        content_box.remove_widget(label)
-        edit_input = TextInput(
-            text=original_name,
-            multiline=False,
-            font_size=18,
-            bold=True,
-            foreground_color=(56/255, 73/255, 38/255, 1),
-            background_color=(0, 0, 0, 0),
-            cursor_color=(56/255, 73/255, 38/255, 1),
-            padding=[0, 12, 0, 0]
-        )
-
-        def cancel_edit(*_):
-            content_box.remove_widget(edit_input)
-            content_box.add_widget(label)
-            card.is_editing = False
-
-        def save_edit(_):
-            new_name = edit_input.text.strip()
-            if not new_name or new_name == original_name:
-                cancel_edit()
-                return
-            if get_tree_by_name(new_name):
-                self.show_notification(f"'{new_name}' already exists!")
-                cancel_edit()
-                return
-            if update_tree_name(card.tree_id, new_name):
+        
+        if not hasattr(card, 'tree_id') or card.tree_id is None:
+            self.show_notification("Cannot edit this entry", icon_type='fail')
+            return
+        
+        def on_edit_complete(success, new_name, original_name):
+            if success:
                 card.tree_name = new_name
-                label.text = new_name
-                self.show_notification(f"Renamed to '{new_name}'")
-                self.total_scan_count = sum(t["count"] for t in self.trees)
-            cancel_edit()
-
-        edit_input.bind(on_text_validate=save_edit)
-        content_box.add_widget(edit_input)
-        edit_input.focus = True
+                card.label.text = new_name
+                for t in self.trees:
+                    if t.get("id") == card.tree_id:
+                        t["name"] = new_name
+                        break
+                for t in self.filtered_trees:
+                    if t.get("id") == card.tree_id:
+                        t["name"] = new_name
+                        break
+                self.show_notification(f"Renamed to '{new_name}'", icon_type='success')
+        
+        modal = EditModal(tree_name=card.tree_name, tree_id=card.tree_id, callback=on_edit_complete)
+        modal.open()
 
     def confirm_delete(self, card):
-        """Show confirmation dialog before deleting (DB-backed)."""
-        from kivy.factory import Factory
-        from app.core.db import delete_tree
+        if not hasattr(card, 'tree_id') or card.tree_id is None:
+            self.show_notification("Cannot delete this entry", icon_type='fail')
+            return
         
-        modal = Factory.ConfirmDeleteModal()
-        modal.ids.title_label.text = f"Delete '{card.tree_name}'?"
-        modal.opacity = 0
-        
-        def close_modal(*args):
-            anim = Animation(opacity=0, duration=0.2)
-            anim.bind(on_complete=lambda *_: self.remove_widget(modal))
-            anim.start(modal)
-        
-        def do_delete(*_):
-            if delete_tree(card.tree_id):
+        def on_delete_complete(success, tree_name):
+            if success:
                 fade_out = Animation(opacity=0, duration=0.2)
                 fade_out.bind(on_complete=lambda *_: self.ids.tree_list.remove_widget(card))
                 fade_out.start(card)
-                self.show_notification(f"'{card.tree_name}' deleted")
                 self.trees = [t for t in self.trees if t["id"] != card.tree_id]
                 self.filtered_trees = [t for t in self.filtered_trees if t["id"] != card.tree_id]
                 self.total_scan_count = sum(t["count"] for t in self.trees)
-            close_modal()
-            self.hide_action_buttons()
-            self.active_card = None
-
-        modal.ids.cancel_btn.bind(on_release=close_modal)
-        modal.ids.delete_btn.bind(on_release=do_delete)
+                self.hide_action_buttons()
+                self.active_card = None
+                self.show_notification(f"'{tree_name}' deleted", icon_type='success')
+            else:
+                self.show_notification("Failed to delete tree", icon_type='fail')
         
-        self.add_widget(modal)
-        Animation(opacity=1, duration=0.2).start(modal)
+        modal = DeleteModal(tree_name=card.tree_name, tree_id=card.tree_id, callback=on_delete_complete)
+        modal.open()
 
     def navigate_to_image_selection(self, card):
-        """Navigate to enhanced ImageSelection screen filtered by selected tree."""
         self.selected_tree = card.tree_name
         app = App.get_running_app()
-        # Set the current tree context for ImageSelection
         app.current_tree_name = card.tree_name
         app.selected_tree_id = getattr(card, 'tree_id', None)
         app.last_screen = 'records'
-        # Navigate to the enhanced image selection screen (filtered by tree)
         self.manager.current = 'image_select'
 
     def on_add_tree(self):
-        """Show dialog to add new tree with extended fields."""
-        self.show_tree_dialog()
+        self.show_add_tree_modal()
 
     def on_search_text(self, text):
-        """Filter tree list based on search text (DB-backed list already loaded)."""
         tree_list = self.ids.tree_list
         tree_list.clear_widgets()
         search_text = (text or '').lower().strip()
@@ -405,17 +257,56 @@ class RecordsScreen(Screen):
             self.filtered_trees = self.trees.copy()
         self.hide_action_buttons()
         self.active_card = None
+        if not self.filtered_trees:
+            self.show_empty = True
+            search_text = (text or '').lower().strip()
+            self.empty_message = (
+                f"No trees match '{text}'." if search_text
+                else "No records yet.\nTap 'Add Tree' to get started."
+            )
+        else:
+            self.show_empty = False
         for t in self.filtered_trees:
             self.add_tree_item(t)
         Clock.schedule_once(lambda dt: setattr(self.ids.scroll_view, 'scroll_y', 1), 0.1)
 
-    def show_notification(self, message):
-        """Show animated notification popup"""
+    def show_notification(self, message, icon_type=None):
+        """Show animated notification popup with optional icon.
+
+        Args:
+            message: The notification text
+            icon_type: 'success' for checkmark, 'fail' for warning, None for no icon
+        """
         from kivy.graphics import Color, RoundedRectangle, Line
-        
-        popup = BoxLayout(
+        from kivy.uix.image import Image
+        from kivy.uix.floatlayout import FloatLayout
+
+        # Measure label first to size container dynamically
+        popup_label = Label(
+            text=message,
+            color=(49/255, 49/255, 49/255, 1),
+            font_size=14,
+            halign="left",
+            valign="middle",
+            bold=True,
+            pos_hint={"center_y": 0.52}
+        )
+        popup_label.texture_update()
+        popup_label.size = popup_label.texture_size
+
+        # Calculate content width: icon (if any) + spacing + label
+        icon_width = 24 + 8 if icon_type else 0
+        content_width = icon_width + popup_label.width
+
+        # Equal horizontal padding on both sides
+        h_padding = 20
+        popup_width = content_width + h_padding * 2
+        popup_height = 45
+
+        # Main container — dynamically sized
+        popup = FloatLayout(
             size_hint=(None, None),
-            size=(320, 45),
+            size=(popup_width, popup_height),
             pos_hint={"center_x": 0.5, "top": 0.88},
             opacity=0
         )
@@ -442,16 +333,38 @@ class RecordsScreen(Screen):
             )
         )
 
-        popup_label = Label(
-            text=message,
-            color=(49/255, 49/255, 49/255, 1),
-            font_size=14,
-            halign="center",
-            valign="middle",
-            bold=True
+        # Inner content container — exact content size, centered in popup
+        content = BoxLayout(
+            orientation='horizontal',
+            size_hint=(None, None),
+            size=(content_width, 24),
+            spacing=8,
+            pos_hint={"center_x": 0.5, "center_y": 0.5}
         )
-        popup_label.bind(size=lambda l, _: setattr(l, 'text_size', (l.width, None)))
-        popup.add_widget(popup_label)
+
+        if icon_type == 'success':
+            icon = Image(
+                source='app/assets/success.png',
+                size_hint=(None, None),
+                size=(24, 24),
+                allow_stretch=True,
+                keep_ratio=True,
+                mipmap=True
+            )
+            content.add_widget(icon)
+        elif icon_type == 'fail':
+            icon = Image(
+                source='app/assets/fail.png',
+                size_hint=(None, None),
+                size=(24, 24),
+                allow_stretch=True,
+                keep_ratio=True,
+                mipmap=True
+            )
+            content.add_widget(icon)
+
+        content.add_widget(popup_label)
+        popup.add_widget(content)
         self.add_widget(popup)
 
         anim = Animation(opacity=1, duration=0.3)
@@ -459,35 +372,30 @@ class RecordsScreen(Screen):
         anim += Animation(opacity=0, duration=0.4)
         anim.bind(on_complete=lambda *_: self.remove_widget(popup))
         anim.start(popup)
+
     def export_all_scans(self):
         '''Export all scans to CSV file.'''
         from app.core.db import export_scans_to_csv
         import os
         
         try:
-            # Export all scans (no tree filter)
             file_path = export_scans_to_csv()
-            
             if file_path and os.path.exists(file_path):
-                # Show success notification with file path
                 file_name = os.path.basename(file_path)
-                self.show_notification(f'✓ Exported to {file_name}')
+                self.show_notification(f'Exported to {file_name}', icon_type='success')
             else:
-                self.show_notification('⚠ Export failed - No scans found')
-        
+                self.show_notification('Export failed - No scans found', icon_type='fail')
         except Exception as e:
             print(f'Export error: {e}')
-            self.show_notification(f'⚠ Export failed: {str(e)}')
+            self.show_notification(f'Export failed: {str(e)}', icon_type='fail')
     
-    def show_tree_dialog(self):
+    def show_add_tree_modal(self):
         '''Show dialog to add new tree with extended fields.'''
-        from app.dialogs.tree_dialog import TreeDialog
+        from app.modals.add_tree_modal import AddTreeModal
         
         def on_tree_added(tree_id, name, location, variety):
-            '''Callback when tree is successfully added.'''
-            self.show_notification(f'✓ Tree "{name}" added successfully')
-            # Refresh tree list to show new tree
+            self.show_notification(f'Tree "{name}" added successfully', icon_type='success')
             self.build_tree_list()
         
-        dialog = TreeDialog(callback=on_tree_added)
+        dialog = AddTreeModal(callback=on_tree_added)
         dialog.open()

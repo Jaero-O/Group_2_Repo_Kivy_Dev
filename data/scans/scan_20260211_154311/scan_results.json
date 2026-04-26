@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-02-11T15:43:11.420104",
+  "timings": {
+    "total": 40.80669188499451
+  },
+  "classification": {
+    "class": "Cutting Weevil",
+    "class_index": 2,
+    "confidence": 0.17427273094654083,
+    "probabilities": {
+      "Anthracnose": 0.09566163271665573,
+      "Bacterial Canker": 0.15358825027942657,
+      "Cutting Weevil": 0.17427273094654083,
+      "Die Back": 0.15521089732646942,
+      "Gall Midge": 0.110388845205307,
+      "Healthy": 0.08486030995845795,
+      "Powdery Mildew": 0.08217495679855347,
+      "Sooty Mould": 0.1438424289226532
+    }
+  },
+  "analysis": null,
+  "errors": [],
+  "status": "success",
+  "database_id": 27
+}

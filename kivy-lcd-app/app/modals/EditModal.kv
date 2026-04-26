@@ -1,0 +1,195 @@
+#:kivy 2.0
+# Updated
+<EditModal>:
+    size_hint: None, None
+    size: 480, 800
+    auto_dismiss: False
+    background: ""
+    background_color: 0, 0, 0, 0
+    overlay_color: 0, 0, 0, 0.5
+    
+    FloatLayout:
+        canvas.before:
+            Color:
+                rgba: 0, 0, 0, 0.5
+            Rectangle:
+                pos: root.pos
+                size: root.size
+        
+        BoxLayout:
+            orientation: 'vertical'
+            size_hint: None, None
+            size: 340, 190
+            pos_hint: {"center_x": 0.5, "center_y": 0.5}
+            padding: [20, 20, 20, 18]
+            spacing: 0
+            
+            canvas.before:
+                Color:
+                    rgba: 0, 0, 0, 0.25
+                RoundedRectangle:
+                    radius: [16]
+                    pos: self.x + 2, self.y - 4
+                    size: self.size
+                Color:
+                    rgba: 1, 1, 1, 1
+                RoundedRectangle:
+                    radius: [16]
+                    pos: self.pos
+                    size: self.size
+            
+            Label:
+                text: "Edit Tree Name"
+                color: 3/255, 33/255, 0/255, 1
+                font_size: 20
+                bold: True
+                size_hint_y: None
+                height: 26
+                halign: "center"
+                valign: "middle"
+                text_size: self.size
+            
+            Widget:
+                size_hint_y: None
+                height: 12
+            
+            FloatLayout:
+                size_hint_y: None
+                height: 52
+                
+                BoxLayout:
+                    orientation: "vertical"
+                    size_hint: None, None
+                    size: 260, 52
+                    pos_hint: {"center_x": 0.5, "y": 0}
+                    spacing: 5
+                    
+                    Label:
+                        text: "Tree Name*"
+                        color: 3/255, 30/255, 0/255, 1
+                        font_size: 13
+                        bold: True
+                        halign: "left"
+                        valign: "bottom"
+                        text_size: self.size
+                        size_hint_y: None
+                        height: 16
+                    
+                    TextInput:
+                        id: name_input
+                        text: root.tree_name
+                        hint_text: "Enter tree name"
+                        hint_text_color: 140/255, 140/255, 140/255, 1
+                        foreground_color: 3/255, 30/255, 0/255, 1
+                        font_size: 13
+                        multiline: False
+                        size_hint_y: None
+                        height: 32
+                        padding: [10, 8, 10, 8]
+                        background_normal: ""
+                        background_color: 1, 1, 1, 1
+                        cursor_color: 3/255, 30/255, 0/255, 1
+                        on_text_validate: root.save_changes()
+                        canvas.before:
+                            Color:
+                                rgba: (0/255, 152/255, 0/255, 1) if self.focus else (200/255, 200/255, 200/255, 1)
+                            Line:
+                                rounded_rectangle: (self.x, self.y, self.width, self.height, 8)
+                                width: 2
+            
+            Widget:
+                size_hint_y: None
+                height: 8
+            
+            Label:
+                id: error_label
+                text: ""
+                color: 220/255, 53/255, 69/255, 1
+                font_size: 11
+                bold: True
+                size_hint_y: None
+                height: 18
+                halign: "center"
+                valign: "top"
+                text_size: self.size
+                opacity: 0
+            
+            Widget:
+                size_hint_y: 1
+            
+            BoxLayout:
+                orientation: 'horizontal'
+                size_hint_y: None
+                height: 34
+                spacing: 0
+                
+                # Cancel Button — matches Delete Modal cancel style
+                Button:
+                    text: "Cancel"
+                    size_hint: None, None
+                    size: 90, 34
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    color: (0/255, 36/255, 0/255, 1) if self.state == 'down' else (0/255, 56/255, 0/255, 1)
+                    font_size: 14
+                    bold: True
+                    on_press: root.cancel()
+                    canvas.before:
+                        # Shadow
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.15)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x + 1, self.y - 3
+                            size: self.size
+                        # Bottom edge
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (180/255, 180/255, 180/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y - 2
+                            size: self.size
+                        # Main face
+                        Color:
+                            rgba: (220/255, 220/255, 220/255, 1) if self.state == 'down' else (241/255, 241/255, 241/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                            size: self.size
+                
+                Widget:
+                    size_hint_x: 1
+                
+                # Save Button — green with 3-layer shadow
+                Button:
+                    text: "Save"
+                    size_hint: None, None
+                    size: 90, 34
+                    background_normal: ""
+                    background_color: 0, 0, 0, 0
+                    color: 1, 1, 1, 1
+                    font_size: 14
+                    bold: True
+                    on_press: root.save_changes()
+                    canvas.before:
+                        # Shadow
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0, 0, 0, 0.2)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x + 1, self.y - 3
+                            size: self.size
+                        # Bottom edge
+                        Color:
+                            rgba: (0, 0, 0, 0) if self.state == 'down' else (0/255, 100/255, 0/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y - 2
+                            size: self.size
+                        # Main face
+                        Color:
+                            rgba: (0/255, 110/255, 0/255, 1) if self.state == 'down' else (0/255, 152/255, 0/255, 1)
+                        RoundedRectangle:
+                            radius: [7]
+                            pos: self.x, self.y + (2 if self.state == 'normal' else 0)
+                            size: self.size

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-01T15:36:17.491408",
+  "timings": {
+    "total": 25.45702838897705
+  },
+  "classification": {
+    "error": "Command '['python3', '/home/kennethbinasa/kivy_v1/kivy-lcd-app/app/scan/classify_leaf.py', '/home/kennethbinasa/kivy_v1/data/scans/scan_20260301_153617/output_image_original.png', '/home/kennethbinasa/kivy_v1/kivy-lcd-app/app/scan/resnet_leafdisease_datasetresized.onnx']' returned non-zero exit status 1."
+  },
+  "analysis": null,
+  "errors": [
+    "Homing failed",
+    "Command '['python3', '/home/kennethbinasa/kivy_v1/kivy-lcd-app/app/scan/classify_leaf.py', '/home/kennethbinasa/kivy_v1/data/scans/scan_20260301_153617/output_image_original.png', '/home/kennethbinasa/kivy_v1/kivy-lcd-app/app/scan/resnet_leafdisease_datasetresized.onnx']' returned non-zero exit status 1."
+  ],
+  "status": "success",
+  "database_id": 55
+}

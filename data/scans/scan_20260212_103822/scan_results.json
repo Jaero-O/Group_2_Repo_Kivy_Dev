@@ -1,0 +1,25 @@
+{
+  "timestamp": "2026-02-12T10:38:22.955546",
+  "timings": {
+    "total": 26.623982191085815
+  },
+  "classification": {
+    "class": "Die Back",
+    "class_index": 3,
+    "confidence": 0.30779677629470825,
+    "probabilities": {
+      "Anthracnose": 0.033940114080905914,
+      "Bacterial Canker": 0.08356989920139313,
+      "Cutting Weevil": 0.058986783027648926,
+      "Die Back": 0.30779677629470825,
+      "Gall Midge": 0.08829744905233383,
+      "Healthy": 0.11275891214609146,
+      "Powdery Mildew": 0.15730951726436615,
+      "Sooty Mould": 0.15734051167964935
+    }
+  },
+  "analysis": null,
+  "errors": [],
+  "status": "success",
+  "database_id": 31
+}

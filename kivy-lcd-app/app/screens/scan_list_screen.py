@@ -43,9 +43,9 @@ class ScanCard(BoxLayout):
         except:
             self.formatted_timestamp = timestamp
         
-        # Calculate confidence (placeholder)
-        self.confidence_score = 85.0
-        
+        # Use confidence from record to keep DB/screen sync
+        self.confidence_score = scan_data.get('confidence_score', scan_data.get('confidence', 0.0))
+
         # Build card UI
         self._build_ui()
     
@@ -193,21 +193,24 @@ class ScanListScreen(Screen):
         # Get tree info from app state
         app = App.get_running_app()
         tree_name = getattr(app, 'current_tree_name', '')
-        
+
         if not tree_name:
             self.tree_name = "No tree selected"
             self.scans = []
             return
-        
-        # Get tree ID
-        tree_data = get_tree_by_name(tree_name)
-        if not tree_data:
-            self.tree_name = "Tree not found"
-            self.scans = []
-            return
-        
-        self.tree_id = tree_data['id']
-        self.tree_name = tree_name
+
+        if tree_name == "Unassigned Scans":
+            self.tree_id = None
+            self.tree_name = tree_name
+            tree_data = None
+        else:
+            tree_data = get_tree_by_name(tree_name)
+            if not tree_data:
+                self.tree_name = "Tree not found"
+                self.scans = []
+                return
+            self.tree_id = tree_data['id']
+            self.tree_name = tree_name
         
         if reset:
             self.current_offset = 0
@@ -257,6 +260,7 @@ class ScanListScreen(Screen):
             # Load scans with filters, pagination, and SQL sorting
             scan_list = get_scans_filtered(
                 tree_id=self.tree_id,
+                unassigned=(self.tree_name == "Unassigned Scans"),
                 disease_name=disease_filter,
                 start_date=start_date,
                 end_date=end_date,

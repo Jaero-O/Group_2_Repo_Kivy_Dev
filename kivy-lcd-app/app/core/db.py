@@ -48,14 +48,67 @@ SCHEMA_STATEMENTS = [
         tree_id INTEGER REFERENCES tbl_tree(id) ON DELETE CASCADE,
         disease_id INTEGER REFERENCES tbl_disease(id) ON DELETE SET NULL,
         severity_level_id INTEGER REFERENCES tbl_severity_level(id) ON DELETE SET NULL,
-        severity_percentage REAL,
+        
+        -- Core scan metadata
+        scan_timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+        scan_duration REAL,
+        scan_status TEXT,
+        
+        -- Classification results
+        disease_class TEXT,
         confidence_score REAL,
-        total_leaf_area REAL,
-        lesion_area REAL,
+        pred_anthracnose REAL,
+        pred_healthy REAL,
+        pred_bacterial_canker REAL,
+        pred_cutting_weevil REAL,
+        pred_powdery_mildew REAL,
+        pred_sooty_mould REAL,
+        
+        -- Severity analysis
+        severity_percentage REAL,
+        severity_level TEXT,
+        
+        -- Leaf measurements
+        leaf_area_cm2 REAL,
+        lesion_area_cm2 REAL,
+        lesion_count INTEGER,
+        mean_lesion_size_px REAL,
+        
+        -- Color analysis - Leaf
+        leaf_mean_r REAL,
+        leaf_mean_g REAL,
+        leaf_mean_b REAL,
+        
+        -- Color analysis - Lesion
+        lesion_mean_r REAL,
+        lesion_mean_g REAL,
+        lesion_mean_b REAL,
+        lesion_to_leaf_color_ratio_g REAL,
+        
+        -- Vegetation indices
+        exg_mean REAL,
+        ndvi_proxy_mean REAL,
+        
+        -- Shape features
+        leaf_solidity REAL,
+        leaf_circularity REAL,
+        leaf_aspect_ratio REAL,
+        
+        -- Texture features
+        damage_pct_inpaint REAL,
+        lesion_glcm_contrast REAL,
+        lesion_glcm_dissimilarity REAL,
+        lesion_glcm_energy REAL,
+        lesion_glcm_homogeneity REAL,
+        lesion_glcm_correlation REAL,
+        
+        -- File references
         image_path TEXT,
         thumbnail_path TEXT,
+        json_path TEXT,
+        
+        -- Metadata
         notes TEXT,
-        scan_timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
         is_archived INTEGER DEFAULT 0
     );
     """,
@@ -272,6 +325,46 @@ def ensure_schema_upgrades() -> None:
                     cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN confidence_score REAL;")
                 except sqlite3.OperationalError:
                     pass
+            if "disease_class" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN disease_class TEXT;")
+                except sqlite3.OperationalError:
+                    pass
+            if "severity_level" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN severity_level TEXT;")
+                except sqlite3.OperationalError:
+                    pass
+            if "pred_anthracnose" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN pred_anthracnose REAL;")
+                except sqlite3.OperationalError:
+                    pass
+            if "pred_healthy" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN pred_healthy REAL;")
+                except sqlite3.OperationalError:
+                    pass
+            if "pred_bacterial_canker" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN pred_bacterial_canker REAL;")
+                except sqlite3.OperationalError:
+                    pass
+            if "pred_cutting_weevil" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN pred_cutting_weevil REAL;")
+                except sqlite3.OperationalError:
+                    pass
+            if "pred_powdery_mildew" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN pred_powdery_mildew REAL;")
+                except sqlite3.OperationalError:
+                    pass
+            if "pred_sooty_mould" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN pred_sooty_mould REAL;")
+                except sqlite3.OperationalError:
+                    pass
             if "total_leaf_area" not in cols:
                 try:
                     cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN total_leaf_area REAL;")
@@ -280,6 +373,11 @@ def ensure_schema_upgrades() -> None:
             if "lesion_area" not in cols:
                 try:
                     cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN lesion_area REAL;")
+                except sqlite3.OperationalError:
+                    pass
+            if "source" not in cols:
+                try:
+                    cur.execute("ALTER TABLE tbl_scan_record ADD COLUMN source TEXT;")
                 except sqlite3.OperationalError:
                     pass
             
@@ -400,20 +498,27 @@ def insert_severity_level(name: str, description: str = "") -> int:
 def insert_scan_record(tree_id: int, disease_id: Optional[int], severity_level_id: Optional[int],
                         severity_percentage: float, image_path: str, thumbnail_path: Optional[str] = None,
                         notes: Optional[str] = None, confidence_score: Optional[float] = None,
-                        total_leaf_area: Optional[float] = None, lesion_area: Optional[float] = None) -> int:
+                        total_leaf_area: Optional[float] = None, lesion_area: Optional[float] = None,
+                        disease_class: Optional[str] = None, severity_level: Optional[str] = None,
+                        pred_anthracnose: Optional[float] = None, pred_healthy: Optional[float] = None,
+                        pred_bacterial_canker: Optional[float] = None, pred_cutting_weevil: Optional[float] = None,
+                        pred_powdery_mildew: Optional[float] = None, pred_sooty_mould: Optional[float] = None,
+                        source: Optional[str] = 'scans') -> int:
     conn = get_connection()
     try:
         with closing(conn.cursor()) as cur:
             cur.execute(
                 """
-                INSERT INTO tbl_scan_record(tree_id, disease_id, severity_level_id, severity_percentage, 
-                                             confidence_score, total_leaf_area, lesion_area,
-                                             image_path, thumbnail_path, notes)
-                VALUES (?,?,?,?,?,?,?,?,?,?)
+                INSERT INTO tbl_scan_record(tree_id, disease_id, severity_level_id, disease_class, severity_level, severity_percentage,
+                                             confidence_score, pred_anthracnose, pred_healthy, pred_bacterial_canker, pred_cutting_weevil,
+                                             pred_powdery_mildew, pred_sooty_mould, total_leaf_area, lesion_area,
+                                             image_path, thumbnail_path, notes, source)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
-                (tree_id, disease_id, severity_level_id, severity_percentage, 
-                 confidence_score, total_leaf_area, lesion_area,
-                 image_path, thumbnail_path, notes)
+                (tree_id, disease_id, severity_level_id, disease_class, severity_level, severity_percentage,
+                 confidence_score, pred_anthracnose, pred_healthy, pred_bacterial_canker, pred_cutting_weevil,
+                 pred_powdery_mildew, pred_sooty_mould, total_leaf_area, lesion_area,
+                 image_path, thumbnail_path, notes, source)
             )
             conn.commit()
             # Invalidate scan count caches
@@ -421,6 +526,65 @@ def insert_scan_record(tree_id: int, disease_id: Optional[int], severity_level_i
             invalidate_cache('count_scans_for_tree')
             invalidate_cache('count_unassigned_scans')
             return int(cur.lastrowid)
+    finally:
+        return_connection(conn)
+
+
+def query_record_by_image_path(image_path: str) -> Optional[Dict[str, Any]]:
+    """Return scan record by image_path or None."""
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute("SELECT id, image_path FROM tbl_scan_record WHERE image_path=?", (image_path,))
+            row = cur.fetchone()
+            if row:
+                return {"id": row[0], "image_path": row[1]}
+            return None
+    finally:
+        return_connection(conn)
+
+
+def get_scan_by_id(scan_id: int) -> Optional[Dict[str, Any]]:
+    """Get a scan row by scan_id."""
+    conn = get_connection()
+    try:
+        with closing(conn.cursor()) as cur:
+            cur.execute(
+                """
+                SELECT r.id, r.tree_id, t.name as tree_name, r.disease_id, d.name as disease_name,
+                       r.severity_level_id, s.name as severity_name,
+                       r.scan_timestamp, r.scan_duration, r.scan_status,
+                       r.disease_class, r.confidence_score, r.image_path, r.thumbnail_path,
+                       r.notes, r.source
+                FROM tbl_scan_record r
+                LEFT JOIN tbl_tree t ON r.tree_id=t.id
+                LEFT JOIN tbl_disease d ON r.disease_id=d.id
+                LEFT JOIN tbl_severity_level s ON r.severity_level_id=s.id
+                WHERE r.id=?
+                """,
+                (scan_id,)
+            )
+            row = cur.fetchone()
+            if not row:
+                return None
+            return {
+                "id": row[0],
+                "tree_id": row[1],
+                "tree_name": row[2],
+                "disease_id": row[3],
+                "disease_name": row[4],
+                "severity_level_id": row[5],
+                "severity_name": row[6],
+                "scan_timestamp": row[7],
+                "scan_duration": row[8],
+                "scan_status": row[9],
+                "disease_class": row[10],
+                "confidence_score": row[11],
+                "image_path": row[12],
+                "thumbnail_path": row[13],
+                "notes": row[14],
+                "source": row[15],
+            }
     finally:
         return_connection(conn)
 
@@ -604,14 +768,15 @@ def count_unassigned_scans() -> int:
     finally:
         return_connection(conn)
 
-def get_scans_filtered(tree_id: Optional[int] = None, disease_name: Optional[str] = None, 
+def get_scans_filtered(tree_id: Optional[int] = None, unassigned: bool = False, disease_name: Optional[str] = None, 
                       start_date: Optional[str] = None, end_date: Optional[str] = None,
                       limit: Optional[int] = None, offset: int = 0,
                       order_by: str = 'scan_timestamp', order_dir: str = 'DESC') -> List[Dict[str, Any]]:
     """Fetch scans with enhanced filtering options including date ranges and sorting.
     
     Args:
-        tree_id: Filter by tree (None for all trees, or pass explicit None to get unassigned)
+        tree_id: Filter by tree (None for all trees)
+        unassigned: If True, show scans with no tree assignment (tree_id IS NULL)
         disease_name: Filter by disease name
         start_date: Start date in YYYY-MM-DD format
         end_date: End date in YYYY-MM-DD format
@@ -629,6 +794,8 @@ def get_scans_filtered(tree_id: Optional[int] = None, disease_name: Optional[str
     if tree_id is not None:
         filters.append("r.tree_id=?")
         params.append(tree_id)
+    elif unassigned:
+        filters.append("r.tree_id IS NULL")
     
     if disease_name:
         filters.append("d.name=?")
@@ -652,7 +819,11 @@ def get_scans_filtered(tree_id: Optional[int] = None, disease_name: Optional[str
     limit_clause = f" LIMIT {limit} OFFSET {offset}" if limit is not None else ""
     
     sql = f"""
-        SELECT r.id, r.scan_timestamp, r.severity_percentage, r.image_path, r.thumbnail_path, r.notes,
+        SELECT r.id, r.scan_timestamp, r.severity_percentage, r.confidence_score,
+               r.pred_anthracnose, r.pred_healthy, r.pred_bacterial_canker, r.pred_cutting_weevil,
+               r.pred_powdery_mildew, r.pred_sooty_mould,
+               r.image_path, r.thumbnail_path, r.notes,
+               r.disease_class, r.severity_level,
                d.name AS disease_name, s.name AS severity_name, t.name AS tree_name
         FROM tbl_scan_record r
         LEFT JOIN tbl_disease d ON r.disease_id = d.id
@@ -674,12 +845,21 @@ def get_scans_filtered(tree_id: Optional[int] = None, disease_name: Optional[str
                     "id": row[0],
                     "scan_timestamp": row[1],
                     "severity_percentage": row[2],
-                    "image_path": row[3],
-                    "thumbnail_path": row[4],
-                    "notes": row[5],
-                    "disease_name": row[6] or "Unknown",
-                    "severity_name": row[7] or "Unknown",
-                    "tree_name": row[8] or "Unassigned"
+                    "confidence_score": row[3] or 0.0,
+                    "pred_anthracnose": row[4] or 0.0,
+                    "pred_healthy": row[5] or 0.0,
+                    "pred_bacterial_canker": row[6] or 0.0,
+                    "pred_cutting_weevil": row[7] or 0.0,
+                    "pred_powdery_mildew": row[8] or 0.0,
+                    "pred_sooty_mould": row[9] or 0.0,
+                    "image_path": row[10],
+                    "thumbnail_path": row[11],
+                    "notes": row[12],
+                    "disease_class": row[13] or None,
+                    "severity_level": row[14] or None,
+                    "disease_name": row[15] or "Unknown",
+                    "severity_name": row[16] or "Unknown",
+                    "tree_name": row[17] or "Unassigned"
                 })
             return result
     finally:
@@ -706,7 +886,10 @@ def get_scans(tree_id: Optional[int] = None, window_days: Optional[int] = None, 
     where_clause = " WHERE " + " AND ".join(filters) if filters else ""
     limit_clause = f" LIMIT {limit} OFFSET {offset}" if limit is not None else ""
     sql = f"""
-        SELECT r.id, r.scan_timestamp, r.severity_percentage, r.image_path, r.thumbnail_path, r.notes,
+        SELECT r.id, r.scan_timestamp, r.severity_percentage, r.confidence_score, r.pred_anthracnose, r.pred_healthy,
+               r.pred_bacterial_canker, r.pred_cutting_weevil, r.pred_powdery_mildew, r.pred_sooty_mould,
+               r.image_path, r.thumbnail_path, r.notes,
+               r.disease_class, r.severity_level,
                d.name AS disease_name, s.name AS severity_name, t.name AS tree_name
         FROM tbl_scan_record r
         LEFT JOIN tbl_disease d ON r.disease_id = d.id
@@ -727,12 +910,21 @@ def get_scans(tree_id: Optional[int] = None, window_days: Optional[int] = None, 
                     "id": row[0],
                     "scan_timestamp": row[1],
                     "severity_percentage": row[2],
-                    "image_path": row[3],
-                    "thumbnail_path": row[4],
-                    "notes": row[5],
-                    "disease_name": row[6],
-                    "severity_name": row[7],
-                    "tree_name": row[8],
+                    "confidence_score": row[3] or 0.0,
+                    "pred_anthracnose": row[4] or 0.0,
+                    "pred_healthy": row[5] or 0.0,
+                    "pred_bacterial_canker": row[6] or 0.0,
+                    "pred_cutting_weevil": row[7] or 0.0,
+                    "pred_powdery_mildew": row[8] or 0.0,
+                    "pred_sooty_mould": row[9] or 0.0,
+                    "image_path": row[10],
+                    "thumbnail_path": row[11],
+                    "notes": row[12],
+                    "disease_class": row[13] or None,
+                    "severity_level": row[14] or None,
+                    "disease_name": row[15],
+                    "severity_name": row[10],
+                    "tree_name": row[11],
                 })
             return result
     finally:
@@ -756,6 +948,7 @@ def get_scan_detail(scan_id: int) -> Optional[Dict[str, Any]]:
                        r.total_leaf_area, r.lesion_area,
                        r.image_path, r.thumbnail_path, r.notes, 
                        r.tree_id, r.disease_id, r.severity_level_id,
+                       r.disease_class, r.severity_level,
                        d.name AS disease_name, d.description AS disease_description,
                        d.symptoms AS disease_symptoms, d.prevention AS disease_prevention,
                        s.name AS severity_name, s.description AS severity_description,
@@ -784,13 +977,15 @@ def get_scan_detail(scan_id: int) -> Optional[Dict[str, Any]]:
                 "tree_id": row[9],
                 "disease_id": row[10],
                 "severity_level_id": row[11],
-                "disease_name": row[12] or "Unknown",
-                "disease_description": row[13] or "",
-                "disease_symptoms": row[14] or "",
-                "disease_prevention": row[15] or "",
-                "severity_name": row[16] or "Unknown",
-                "severity_description": row[17] or "",
-                "tree_name": row[18] or "Unknown",
+                "disease_class": row[12] or None,
+                "severity_level": row[13] or None,
+                "disease_name": row[14] or "Unknown",
+                "disease_description": row[15] or "",
+                "disease_symptoms": row[16] or "",
+                "disease_prevention": row[17] or "",
+                "severity_name": row[18] or "Unknown",
+                "severity_description": row[19] or "",
+                "tree_name": row[20] or "Unknown",
             }
     finally:
         return_connection(conn)

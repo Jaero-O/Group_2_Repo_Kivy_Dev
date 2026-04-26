@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-01-07T11:41:35.504416",
+  "timings": {
+    "total": 9.495817184448242
+  },
+  "classification": null,
+  "analysis": null,
+  "errors": [
+    "Failed to load frames",
+    "[Errno 2] No such file or directory: '/home/kennethbinasa/kivy_v1/data/scans/scan_20260107_114135/full_leaf_stitched.jpg'"
+  ],
+  "status": "error"
+}
